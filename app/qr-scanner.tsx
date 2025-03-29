@@ -1,12 +1,23 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, TouchableOpacity, Modal, Animated, Dimensions } from 'react-native';
+import { StyleSheet, View, TouchableOpacity, Modal, Animated, Dimensions, Alert } from 'react-native';
 import { CameraView, CameraType, useCameraPermissions } from 'expo-camera';
 import { useRouter, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
+import * as SecureStore from 'expo-secure-store';
+import { cartSessionService } from '@/services/api';
 
 const { width } = Dimensions.get('window');
+
+// Define the session type
+interface SessionData {
+  session_id: number;
+  user_id: number;
+  cart_id: number;
+  is_active: boolean;
+  created_at: string;
+}
 
 export default function QRScannerScreen() {
   const [scanning, setScanning] = useState(true);
@@ -14,7 +25,9 @@ export default function QRScannerScreen() {
   const [permission, requestPermission] = useCameraPermissions();
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [showErrorModal, setShowErrorModal] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("Failed to connect to the cart. Please try again.");
   const [fadeAnim] = useState(new Animated.Value(0));
+  const [session, setSession] = useState<SessionData | null>(null);
   const router = useRouter();
 
   useEffect(() => {
@@ -50,15 +63,36 @@ export default function QRScannerScreen() {
     );
   }
 
-  const handleBarCodeScanned = ({ type, data }: { type: string, data: string }) => {
+  const handleBarCodeScanned = async ({ type, data }: { type: string, data: string }) => {
+    console.log('QR Code scanned:', { type, data });
+    if (!scanning) return;
     setScanning(false);
-    
+
     try {
-      // Simulate a successful response
-      setTimeout(() => {
-        setShowSuccessModal(true);
-      }, 1500);
+      console.log('Calling API to process QR code...');
+      const sessionData = await cartSessionService.scanQrCode(data);
+      console.log('API response:', sessionData);
+      setSession(sessionData);
+      setShowSuccessModal(true);
     } catch (error) {
+      console.error('Error scanning QR code:', error);
+
+      if (error instanceof Error) {
+        console.log('Error message:', error.message);
+        if (error.message.includes('401')) {
+          setErrorMessage('Invalid or expired QR code. Please try again.');
+        } else if (error.message.includes('404')) {
+          setErrorMessage('Cart not found. Please try another cart.');
+        } else if (error.message.includes('400')) {
+          setErrorMessage('Cart is not available at the moment. Please try another one.');
+        } else {
+          setErrorMessage(error.message || 'Failed to connect to the cart. Please try again.');
+        }
+      } else {
+        console.log('Non-Error type encountered:', error);
+        setErrorMessage('Network error. Please check your connection and try again.');
+      }
+
       setShowErrorModal(true);
     }
   };
@@ -137,6 +171,7 @@ export default function QRScannerScreen() {
             <ThemedText style={styles.modalTitle}>Cart Connected!</ThemedText>
             <ThemedText style={styles.modalDescription}>
               You are now connected to the shopping cart.
+              {session ? `\nCart ID: ${session.cart_id}` : ''}
             </ThemedText>
             <TouchableOpacity 
               style={styles.modalButton} 
@@ -168,7 +203,7 @@ export default function QRScannerScreen() {
             </View>
             <ThemedText style={styles.modalTitle}>Connection Failed</ThemedText>
             <ThemedText style={styles.modalDescription}>
-              Failed to connect to the cart. Please try again.
+              {errorMessage}
             </ThemedText>
             <TouchableOpacity 
               style={[styles.modalButton, styles.errorButton]} 

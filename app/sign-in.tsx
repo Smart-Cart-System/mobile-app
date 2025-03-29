@@ -1,33 +1,51 @@
 import React, { useState } from 'react';
-import { StyleSheet, TextInput, TouchableOpacity, View, Image, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
+import { StyleSheet, TextInput, TouchableOpacity, View, Image, KeyboardAvoidingView, Platform, ScrollView, Alert, ActivityIndicator } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
+import { authService } from '@/services/api';
+import { useAuth } from '@/app/_layout';
 
 export default function SignInScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const router = useRouter();
+  const { signIn } = useAuth();
 
   const handleSignIn = async () => {
     // Validate inputs
     if (!email.trim() || !password.trim()) {
-      alert('Please enter both email and password');
+      Alert.alert('Error', 'Please enter both email and password');
       return;
     }
 
+    // Clear previous errors
+    setError(null);
     setIsLoading(true);
 
-    // Simulate API call for sign in
-    setTimeout(() => {
+    try {
+      console.log("Attempting to sign in with email:", email);
+      // Call the authentication API
+      const response = await authService.login(email, password);
+      console.log("Sign-in successful. Setting auth token...");
+      
+      // Use the auth context to set the token and trigger navigation
+      await signIn(response.access_token);
+      
+      // No need to manually navigate as the context will handle it
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'An error occurred during sign in';
+      setError(errorMessage);
+      console.error("Sign-in failed:", errorMessage);
+      Alert.alert('Sign In Failed', errorMessage);
+    } finally {
       setIsLoading(false);
-      // Redirect to main app
-      router.replace('/(tabs)');
-    }, 1500);
+    }
   };
 
   const handleSignUp = () => {
@@ -36,13 +54,14 @@ export default function SignInScreen() {
 
   const handleForgotPassword = () => {
     // In a real app, navigate to forgot password screen
-    alert('Forgot password feature not implemented in demo');
+    Alert.alert('Forgot Password', 'The password reset feature will be available soon.');
   };
 
   return (
     <KeyboardAvoidingView
       style={{ flex: 1 }}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={5} // Adjust this value based on your layout
     >
       <Stack.Screen options={{ headerShown: false }} />
       <ScrollView contentContainerStyle={styles.container}>
@@ -57,6 +76,13 @@ export default function SignInScreen() {
         <View style={styles.formContainer}>
           <ThemedText style={styles.title}>Sign In</ThemedText>
           <ThemedText style={styles.subtitle}>Welcome back! Please sign in to continue</ThemedText>
+
+          {error && (
+            <ThemedView style={styles.errorContainer}>
+              <Ionicons name="alert-circle-outline" size={20} color="#FF6B6B" />
+              <ThemedText style={styles.errorText}>{error}</ThemedText>
+            </ThemedView>
+          )}
 
           <View style={styles.inputContainer}>
             <Ionicons name="mail-outline" size={20} color="#999" style={styles.inputIcon} />
@@ -79,6 +105,7 @@ export default function SignInScreen() {
               placeholderTextColor="#999"
               value={password}
               onChangeText={setPassword}
+              autoCapitalize="none"
               secureTextEntry={!showPassword}
             />
             <TouchableOpacity
@@ -106,7 +133,10 @@ export default function SignInScreen() {
             disabled={isLoading}
           >
             {isLoading ? (
-              <ThemedText style={styles.buttonText}>Signing In...</ThemedText>
+              <View style={styles.loadingContent}>
+                <ActivityIndicator color="#FFFFFF" size="small" style={styles.spinner} />
+                <ThemedText style={styles.buttonText}>Signing In...</ThemedText>
+              </View>
             ) : (
               <ThemedText style={styles.buttonText}>Sign In</ThemedText>
             )}
@@ -162,6 +192,19 @@ const styles = StyleSheet.create({
     opacity: 0.7,
     marginBottom: 32,
   },
+  errorContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 107, 107, 0.1)',
+    padding: 10,
+    borderRadius: 8,
+    marginBottom: 16,
+  },
+  errorText: {
+    color: '#FF6B6B',
+    fontSize: 14,
+    marginLeft: 6,
+  },
   inputContainer: {
     backgroundColor: 'rgba(255, 255, 255, 0.1)',
     borderRadius: 8,
@@ -199,6 +242,14 @@ const styles = StyleSheet.create({
   },
   loadingButton: {
     opacity: 0.7,
+  },
+  loadingContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  spinner: {
+    marginRight: 10,
   },
   buttonText: {
     color: '#FFFFFF',

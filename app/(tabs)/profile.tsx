@@ -1,16 +1,19 @@
 import React, { useState } from 'react';
-import { StyleSheet, ScrollView, TouchableOpacity, Switch, TextInput } from 'react-native';
+import { StyleSheet, ScrollView, TouchableOpacity, Switch, TextInput, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { useThemeColor } from '@/hooks/useThemeColor';
 import { useRouter } from 'expo-router';
+import { authService } from '@/services/api';
+import { useAuth } from '@/app/_layout';
 
 export default function ProfileScreen() {
   const colorScheme = useColorScheme();
   const tintColor = useThemeColor({}, 'tint');
   const router = useRouter();
+  const { signOut } = useAuth();
   
   const [user, setUser] = useState({
     name: 'John Doe',
@@ -25,10 +28,26 @@ export default function ProfileScreen() {
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [phoneVerificationCode, setPhoneVerificationCode] = useState('');
   const [isVerifyingPhone, setIsVerifyingPhone] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
-  const handleLogout = () => {
-    // In a real app, this would handle logout logic
-    router.replace("./sign-in");
+  const handleLogout = async () => {
+    try {
+      setIsLoggingOut(true);
+      console.log("Attempting to log out...");
+      
+      // Call the API service to clear session data
+      await authService.logout();
+      
+      // Use the auth context to sign out, which will trigger the redirect
+      await signOut();
+      
+      console.log("Logout successful");
+    } catch (error) {
+      console.error("Error logging out:", error);
+      Alert.alert("Logout Failed", "There was a problem logging out. Please try again.");
+    } finally {
+      setIsLoggingOut(false);
+    }
   };
 
   const toggleEdit = () => {
@@ -192,9 +211,19 @@ export default function ProfileScreen() {
         </ThemedView>
         
         {/* Log Out Button */}
-        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-          <Ionicons name="log-out-outline" size={20} color="#FFF" style={styles.logoutIcon} />
-          <ThemedText style={styles.logoutText}>Log Out</ThemedText>
+        <TouchableOpacity 
+          style={[styles.logoutButton, isLoggingOut && styles.disabledButton]} 
+          onPress={handleLogout}
+          disabled={isLoggingOut}
+        >
+          {isLoggingOut ? (
+            <ThemedText style={styles.logoutText}>Logging out...</ThemedText>
+          ) : (
+            <>
+              <Ionicons name="log-out-outline" size={20} color="#FFF" style={styles.logoutIcon} />
+              <ThemedText style={styles.logoutText}>Log Out</ThemedText>
+            </>
+          )}
         </TouchableOpacity>
       </ScrollView>
     </ThemedView>
@@ -405,6 +434,9 @@ const styles = StyleSheet.create({
     marginBottom: 24,
     flexDirection: 'row',
     justifyContent: 'center',
+  },
+  disabledButton: {
+    opacity: 0.7,
   },
   logoutIcon: {
     marginRight: 8,

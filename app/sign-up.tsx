@@ -1,40 +1,60 @@
 import React, { useState } from 'react';
-import { StyleSheet, TextInput, TouchableOpacity, View, Image, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
+import { StyleSheet, TextInput, TouchableOpacity, View, Image, KeyboardAvoidingView, Platform, ScrollView, Alert, ActivityIndicator } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
+import { authService } from '@/services/api';
+import { useAuth } from '@/app/_layout';
 
 export default function SignUpScreen() {
-  const [name, setName] = useState('');
+  const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const router = useRouter();
+  const { signIn } = useAuth();
 
   const handleSignUp = async () => {
     // Validate inputs
-    if (!name.trim() || !email.trim() || !password.trim() || !confirmPassword.trim()) {
-      alert('Please fill in all fields');
+    if (!fullName.trim() || !email.trim() || !password.trim() || !confirmPassword.trim()) {
+      Alert.alert('Error', 'Please fill in all fields');
       return;
     }
 
     if (password !== confirmPassword) {
-      alert('Passwords do not match');
+      Alert.alert('Error', 'Passwords do not match');
       return;
     }
 
+    // Clear previous errors
+    setError(null);
     setIsLoading(true);
 
-    // Simulate API call for sign up
-    setTimeout(() => {
+    try {
+      // Call API to register user
+      await authService.signup({
+        full_name: fullName,
+        email,
+        password
+      });
+      
+      // After successful signup, automatically log in the user
+      const loginResponse = await authService.login(email, password);
+      
+      // Use the auth context to set the token which will automatically redirect
+      await signIn(loginResponse.access_token);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'An error occurred during registration';
+      setError(errorMessage);
+      Alert.alert('Registration Failed', errorMessage);
+    } finally {
       setIsLoading(false);
-      // Redirect to main app
-      router.replace('/(tabs)');
-    }, 1500);
+    }
   };
 
   const handleSignIn = () => {
@@ -60,14 +80,21 @@ export default function SignUpScreen() {
           <ThemedText style={styles.title}>Create Account</ThemedText>
           <ThemedText style={styles.subtitle}>Sign up to get started with ShopScan</ThemedText>
 
+          {error && (
+            <ThemedView style={styles.errorContainer}>
+              <Ionicons name="alert-circle-outline" size={20} color="#FF6B6B" />
+              <ThemedText style={styles.errorText}>{error}</ThemedText>
+            </ThemedView>
+          )}
+
           <View style={styles.inputContainer}>
             <Ionicons name="person-outline" size={20} color="#999" style={styles.inputIcon} />
             <TextInput
               style={styles.input}
               placeholder="Full Name"
               placeholderTextColor="#999"
-              value={name}
-              onChangeText={setName}
+              value={fullName}
+              onChangeText={setFullName}
             />
           </View>
 
@@ -133,7 +160,10 @@ export default function SignUpScreen() {
             disabled={isLoading}
           >
             {isLoading ? (
-              <ThemedText style={styles.buttonText}>Creating Account...</ThemedText>
+              <View style={styles.loadingContent}>
+                <ActivityIndicator color="#FFFFFF" size="small" style={styles.spinner} />
+                <ThemedText style={styles.buttonText}>Creating Account...</ThemedText>
+              </View>
             ) : (
               <ThemedText style={styles.buttonText}>Sign Up</ThemedText>
             )}
@@ -183,6 +213,19 @@ const styles = StyleSheet.create({
     opacity: 0.7,
     marginBottom: 24,
   },
+  errorContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 107, 107, 0.1)',
+    padding: 10,
+    borderRadius: 8,
+    marginBottom: 16,
+  },
+  errorText: {
+    color: '#FF6B6B',
+    fontSize: 14,
+    marginLeft: 6,
+  },
   inputContainer: {
     backgroundColor: 'rgba(255, 255, 255, 0.1)',
     borderRadius: 8,
@@ -225,6 +268,14 @@ const styles = StyleSheet.create({
   },
   loadingButton: {
     opacity: 0.7,
+  },
+  loadingContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  spinner: {
+    marginRight: 10,
   },
   buttonText: {
     color: '#FFFFFF',

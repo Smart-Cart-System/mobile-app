@@ -1,9 +1,9 @@
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { useFonts } from 'expo-font';
-import { Stack, Redirect } from 'expo-router';
+import { Stack, Redirect, useRouter, useSegments, useRootNavigationState } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, createContext, useContext, useCallback } from 'react';
 import * as SecureStore from 'expo-secure-store';
 
 import { useColorScheme } from '@/hooks/useColorScheme';
@@ -11,65 +11,144 @@ import { useColorScheme } from '@/hooks/useColorScheme';
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
 
+// Create an authentication context to be used throughout the app
+interface AuthContextType {
+  signIn: (token: string) => Promise<void>;
+  signOut: () => Promise<void>;
+  authState: {
+    userToken: string | null;
+    isLoading: boolean;
+  };
+}
+
+const AuthContext = createContext<AuthContextType | null>(null);
+
+// Custom hook to use the authentication context
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error("useAuth must be used within an AuthProvider");
+  }
+  return context;
+};
+
+// Root layout with authentication provider
 export default function RootLayout() {
   const colorScheme = useColorScheme();
-  const [isLoading, setIsLoading] = useState(true);
-  const [userToken, setUserToken] = useState<string | null>(null);
+  const [state, setState] = useState({
+    userToken: null as string | null,
+    isLoading: true,
+  });
   
+  const router = useRouter();
+  const segments = useSegments();
+  const navigationState = useRootNavigationState();
+
   const [loaded] = useFonts({
     SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
   });
 
+  // Sign in method to set user token in secure storage
+  const signIn = useCallback(async (token: string) => {
+    setState(prevState => ({ ...prevState, isLoading: true }));
+    
+    try {
+      console.log("Storing new auth token");
+      await SecureStore.setItemAsync('userToken', token);
+      setState({ userToken: token, isLoading: false });
+    } catch (e) {
+      console.error('Error storing authentication token:', e);
+      setState(prevState => ({ ...prevState, isLoading: false }));
+    }
+  }, []);
+
+  // Sign out method to remove user token from secure storage
+  const signOut = useCallback(async () => {
+    setState(prevState => ({ ...prevState, isLoading: true }));
+    
+    try {
+      console.log("Removing auth token");
+      await SecureStore.deleteItemAsync('userToken');
+      setState({ userToken: null, isLoading: false });
+    } catch (e) {
+      console.error('Error removing authentication token:', e);
+      setState(prevState => ({ ...prevState, isLoading: false }));
+    }
+  }, []);
+
+  // Check login state when app loads
   useEffect(() => {
-    // Check if a user is logged in
     const checkLoginState = async () => {
       try {
         const token = await SecureStore.getItemAsync('userToken');
-        setUserToken(token);
+        console.log('User token on load:', token);
+        setState({ userToken: token, isLoading: false });
       } catch (e) {
         console.log('Error getting authentication token:', e);
-      } finally {
-        setIsLoading(false);
+        setState(prevState => ({ ...prevState, isLoading: false }));
       }
     };
 
     if (loaded) {
       checkLoginState().then(() => {
+        console.log('Splash screen hidden');
         SplashScreen.hideAsync();
       });
     }
   }, [loaded]);
 
-  if (!loaded || isLoading) {
+  // Handle navigation based on auth state
+  useEffect(() => {
+    if (state.isLoading || !navigationState?.key) return;
+
+    const inAuthGroup = segments[0] === '(tabs)';
+    const isScanner = segments[0] === 'qr-scanner' || segments[0] === 'ocr-scanner';
+    
+    if (state.userToken) {
+      // If user is authenticated
+      if (!inAuthGroup && !isScanner) {
+        // Only redirect non-tabs, non-scanner routes when authenticated
+        console.log("Redirecting to tabs because user is authenticated");
+        router.replace("/(tabs)");
+      }
+    } else if (!state.userToken && (inAuthGroup || isScanner)) {
+      // Redirect to sign in if user is not signed in but trying to access protected routes
+      console.log("Redirecting to sign-in because user is not authenticated");
+      router.replace("/sign-in");
+    }
+  }, [state.userToken, state.isLoading, segments, navigationState?.key, router]);
+
+  const authContext: AuthContextType = {
+    signIn,
+    signOut,
+    authState: {
+      userToken: state.userToken,
+      isLoading: state.isLoading
+    }
+  };
+
+  if (!loaded || state.isLoading) {
     return null;
   }
 
-  // If no token is found, redirect to sign-in screen
-  if (!userToken) {
-    return (
+  return (
+    <AuthContext.Provider value={authContext}>
       <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-        <Stack>
+        <Stack screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+          <Stack.Screen name="qr-scanner" options={{ presentation: 'modal', headerShown: false }} />
+          <Stack.Screen name="ocr-scanner" options={{ presentation: 'modal', headerShown: false }} />
           <Stack.Screen name="sign-in" options={{ headerShown: false }} />
           <Stack.Screen name="sign-up" options={{ headerShown: false }} />
-          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          <Stack.Screen name="qr-scanner" options={{ headerShown: false, presentation: 'modal' }} />
-          <Stack.Screen name="ocr-scanner" options={{ headerShown: false, presentation: 'modal' }} />
+
+          {/* Use redirect props on initial route based on authentication status */}
+          <Stack.Screen
+            name="index"
+            redirect={state.userToken ? true : false}
+          />
         </Stack>
         <StatusBar style="auto" />
       </ThemeProvider>
-    );
-  }
-
-  // If user is authenticated, show main app
-  return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="qr-scanner" options={{ headerShown: false, presentation: 'modal' }} />
-        <Stack.Screen name="ocr-scanner" options={{ headerShown: false, presentation: 'modal' }} />
-        <Stack.Screen name="+not-found" />
-      </Stack>
-      <StatusBar style="auto" />
-    </ThemeProvider>
+    </AuthContext.Provider>
   );
 }
