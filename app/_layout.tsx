@@ -1,10 +1,11 @@
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { useFonts } from 'expo-font';
-import { Stack, Redirect, useRouter, useSegments, useRootNavigationState } from 'expo-router';
+import { Stack, Redirect, useRouter, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState, createContext, useContext, useCallback } from 'react';
 import * as SecureStore from 'expo-secure-store';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { useColorScheme } from '@/hooks/useColorScheme';
 
@@ -42,8 +43,7 @@ export default function RootLayout() {
   
   const router = useRouter();
   const segments = useSegments();
-  const navigationState = useRootNavigationState();
-
+  
   const [loaded] = useFonts({
     SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
   });
@@ -99,7 +99,8 @@ export default function RootLayout() {
 
   // Handle navigation based on auth state
   useEffect(() => {
-    if (state.isLoading || !navigationState?.key) return;
+    // Wait for navigation to be ready
+    if (state.isLoading || !segments) return;
 
     const inAuthGroup = segments[0] === '(tabs)';
     const isScanner = segments[0] === 'qr-scanner' || segments[0] === 'ocr-scanner';
@@ -116,7 +117,7 @@ export default function RootLayout() {
       console.log("Redirecting to sign-in because user is not authenticated");
       router.replace("/sign-in");
     }
-  }, [state.userToken, state.isLoading, segments, navigationState?.key, router]);
+  }, [state.userToken, state.isLoading, segments, router]);
 
   const authContext: AuthContextType = {
     signIn,
@@ -132,23 +133,28 @@ export default function RootLayout() {
   }
 
   return (
-    <AuthContext.Provider value={authContext}>
-      <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-        <Stack screenOptions={{ headerShown: false }}>
-          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          <Stack.Screen name="qr-scanner" options={{ presentation: 'modal', headerShown: false }} />
-          <Stack.Screen name="ocr-scanner" options={{ presentation: 'modal', headerShown: false }} />
-          <Stack.Screen name="sign-in" options={{ headerShown: false }} />
-          <Stack.Screen name="sign-up" options={{ headerShown: false }} />
+    <SafeAreaProvider initialMetrics={{
+      frame: { x: 0, y: 0, width: 0, height: 0 },
+      insets: { top: 0, left: 0, right: 0, bottom: 0 }
+    }}>
+      <AuthContext.Provider value={authContext}>
+        <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+          <Stack screenOptions={{ headerShown: false }}>
+            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            <Stack.Screen name="qr-scanner" options={{ presentation: 'modal', headerShown: false }} />
+            <Stack.Screen name="ocr-scanner" options={{ presentation: 'modal', headerShown: false }} />
+            <Stack.Screen name="sign-in" options={{ headerShown: false }} />
+            <Stack.Screen name="sign-up" options={{ headerShown: false }} />
 
-          {/* Use redirect props on initial route based on authentication status */}
-          <Stack.Screen
-            name="index"
-            redirect={state.userToken ? true : false}
-          />
-        </Stack>
-        <StatusBar style="auto" />
-      </ThemeProvider>
-    </AuthContext.Provider>
+            {/* Use redirect props on initial route based on authentication status */}
+            <Stack.Screen
+              name="index"
+              redirect={state.userToken ? true : false}
+            />
+          </Stack>
+          <StatusBar style="auto" />
+        </ThemeProvider>
+      </AuthContext.Provider>
+    </SafeAreaProvider>
   );
 }

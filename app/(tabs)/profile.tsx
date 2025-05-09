@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { StyleSheet, ScrollView, TouchableOpacity, Switch, TextInput, Alert } from 'react-native';
+import { StyleSheet, ScrollView, TouchableOpacity, Switch, TextInput, Alert,View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
@@ -78,28 +78,27 @@ export default function ProfileScreen() {
     // In a real app, this would trigger language change throughout the app
   };
 
-  const languages = ['English', 'Spanish', 'French', 'Arabic', 'Chinese'];
-
+  const languages = ['English', 'Arabic'];
   return (
     <ThemedView style={styles.container}>
       <ThemedText type="title" style={styles.title}>Profile</ThemedText>
       
       {/* Profile Header */}
-      <ThemedView style={styles.profileHeader}>
-        <ThemedView style={styles.avatarContainer}>
-          <ThemedView style={styles.avatar}>
+      <View style={styles.profileHeader}>
+        <View style={styles.avatarContainer}>
+          <ThemedView style={styles.avatar} radius="full">
             <ThemedText style={styles.avatarText}>
               {user.name.split(' ').map(name => name[0]).join('')}
             </ThemedText>
           </ThemedView>
           {user.isPhoneVerified && (
-            <ThemedView style={styles.verifiedBadge}>
+            <View style={styles.verifiedBadge}>
               <Ionicons name="checkmark" size={12} color="#FFF" />
-            </ThemedView>
+            </View>
           )}
-        </ThemedView>
+        </View>
         
-        <ThemedView style={styles.profileInfo}>
+        <View style={styles.profileInfo}>
           <ThemedText style={styles.profileName}>{user.name}</ThemedText>
           <ThemedText style={styles.profileEmail}>{user.email}</ThemedText>
           {!isEditing ? (
@@ -111,17 +110,17 @@ export default function ProfileScreen() {
               <ThemedText style={styles.editButtonText}>Save Changes</ThemedText>
             </TouchableOpacity>
           )}
-        </ThemedView>
-      </ThemedView>
+        </View>
+      </View>
       
       <ScrollView style={styles.profileContent} showsVerticalScrollIndicator={false}>
         {/* Points Section */}
-        <ThemedView style={styles.section}>
+        <ThemedView style={styles.section} variant="card" radius="large" useShadow intensity="low">
           <ThemedText style={styles.sectionTitle}>Your Points</ThemedText>
-          <ThemedView style={styles.pointsContainer}>
+          <View style={styles.pointsContainer}>
             <ThemedText style={styles.pointsValue}>{user.points}</ThemedText>
             <ThemedText style={styles.pointsLabel}>points collected</ThemedText>
-          </ThemedView>
+          </View>
           <TouchableOpacity style={styles.viewDetailsButton}>
             <ThemedText style={styles.viewDetailsText}>View Rewards</ThemedText>
             <Ionicons name="chevron-forward" size={18} color={tintColor} />
@@ -129,13 +128,13 @@ export default function ProfileScreen() {
         </ThemedView>
         
         {/* Phone Verification */}
-        <ThemedView style={styles.section}>
+        <ThemedView style={styles.section} variant="card" radius="large" useShadow intensity="low">
           <ThemedText style={styles.sectionTitle}>Phone Verification</ThemedText>
-          <ThemedView style={styles.phoneSection}>
+          <View style={styles.phoneSection}>
             <ThemedText style={styles.phoneNumber}>{user.phone}</ThemedText>
             {!user.isPhoneVerified ? (
               isVerifyingPhone ? (
-                <ThemedView style={styles.verificationInputContainer}>
+                <View style={styles.verificationInputContainer}>
                   <TextInput
                     style={styles.verificationInput}
                     placeholder="Enter 4-digit code"
@@ -151,7 +150,7 @@ export default function ProfileScreen() {
                   >
                     <ThemedText style={styles.verifyButtonText}>Verify</ThemedText>
                   </TouchableOpacity>
-                </ThemedView>
+                </View>
               ) : (
                 <TouchableOpacity 
                   style={styles.verifyPhoneButton}
@@ -161,18 +160,18 @@ export default function ProfileScreen() {
                 </TouchableOpacity>
               )
             ) : (
-              <ThemedView style={styles.verifiedContainer}>
+              <View style={styles.verifiedContainer}>
                 <Ionicons name="checkmark-circle" size={20} color="#4CAF50" />
                 <ThemedText style={styles.verifiedText}>Verified</ThemedText>
-              </ThemedView>
+              </View>
             )}
-          </ThemedView>
+          </View>
         </ThemedView>
         
         {/* Language Selection */}
-        <ThemedView style={styles.section}>
+        <ThemedView style={styles.section} variant="card" radius="large" useShadow intensity="low">
           <ThemedText style={styles.sectionTitle}>Language</ThemedText>
-          <ThemedView style={styles.languageContainer}>
+          <View style={styles.languageContainer}>
             {languages.map((lang) => (
               <TouchableOpacity 
                 key={lang}
@@ -192,13 +191,13 @@ export default function ProfileScreen() {
                 </ThemedText>
               </TouchableOpacity>
             ))}
-          </ThemedView>
+          </View>
         </ThemedView>
         
         {/* Notification Settings */}
-        <ThemedView style={styles.section}>
+        <ThemedView style={styles.section} variant="card" radius="large" useShadow intensity="low">
           <ThemedText style={styles.sectionTitle}>Notifications</ThemedText>
-          <ThemedView style={styles.settingItem}>
+          <View style={styles.settingItem}>
             <ThemedText style={styles.settingLabel}>Push Notifications</ThemedText>
             <Switch
               trackColor={{ false: '#767577', true: tintColor }}
@@ -207,9 +206,8 @@ export default function ProfileScreen() {
               onValueChange={setNotificationsEnabled}
               value={notificationsEnabled}
             />
-          </ThemedView>
-        </ThemedView>
-        
+          </View>
+        </ThemedView>        
         {/* Log Out Button */}
         <TouchableOpacity 
           style={[styles.logoutButton, isLoggingOut && styles.disabledButton]} 
@@ -233,31 +231,32 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 16,
+    padding: 20,
     paddingTop: 60,
   },
   title: {
-    marginBottom: 24,
+    marginBottom: 28,
+    fontSize: 30,
+    fontWeight: '700',
   },
   profileHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 24,
+    marginBottom: 28,
   },
   avatarContainer: {
     position: 'relative',
-    marginRight: 16,
+    marginRight: 20,
   },
   avatar: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+    width: 90,
+    height: 90,
     backgroundColor: '#4CAF50',
     alignItems: 'center',
     justifyContent: 'center',
   },
   avatarText: {
-    fontSize: 30,
+    fontSize: 32,
     color: '#FFFFFF',
     fontWeight: 'bold',
   },
@@ -266,152 +265,179 @@ const styles = StyleSheet.create({
     bottom: 0,
     right: 0,
     backgroundColor: '#007BFF',
-    borderRadius: 10,
-    width: 20,
-    height: 20,
+    borderRadius: 12,
+    width: 24,
+    height: 24,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
     borderColor: '#FFFFFF',
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
   },
   profileInfo: {
     flex: 1,
   },
   profileName: {
-    fontSize: 22,
+    fontSize: 24,
     fontWeight: '600',
-    marginBottom: 4,
+    marginBottom: 6,
   },
   profileEmail: {
-    fontSize: 14,
+    fontSize: 15,
     opacity: 0.7,
-    marginBottom: 12,
+    marginBottom: 14,
   },
   editButton: {
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 16,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 20,
     backgroundColor: 'rgba(0, 123, 255, 0.2)',
     alignSelf: 'flex-start',
+    elevation: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
   },
   editButtonText: {
     color: '#007BFF',
     fontSize: 14,
-    fontWeight: '500',
+    fontWeight: '600',
   },
   profileContent: {
     flex: 1,
-  },
-  section: {
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 16,
+  },  section: {
+    borderRadius: 20,
+    padding: 18,
+    marginBottom: 20,
   },
   sectionTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: '600',
-    marginBottom: 16,
+    marginBottom: 18,
   },
   pointsContainer: {
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 18,
   },
   pointsValue: {
-    fontSize: 36,
+    fontSize: 32,
     fontWeight: 'bold',
     color: '#4CAF50',
-    marginBottom: 4,
+    marginBottom: 6,
   },
   pointsLabel: {
-    fontSize: 14,
+    fontSize: 15,
     opacity: 0.7,
   },
   viewDetailsButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 8,
+    paddingVertical: 10,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: 'rgba(128, 128, 128, 0.2)',
-    marginTop: 8,
+    borderTopColor: 'rgba(128, 128, 128, 0.15)',
+    marginTop: 10,
+    borderRadius: 0, // Remove any accidental border radius
   },
   viewDetailsText: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '500',
-    marginRight: 4,
-  },
-  phoneSection: {
+    marginRight: 6,
+  },  phoneSection: {
     alignItems: 'center',
   },
   phoneNumber: {
-    fontSize: 18,
-    marginBottom: 12,
+    fontSize: 20,
+    marginBottom: 16,
+    fontWeight: '500',
   },
   verifyPhoneButton: {
     backgroundColor: '#007BFF',
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 20,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 24,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
   },
   verifyPhoneText: {
     color: '#FFFFFF',
     fontWeight: '600',
-    fontSize: 14,
+    fontSize: 15,
   },
   verificationInputContainer: {
     width: '100%',
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginTop: 8,
+    marginTop: 12,
   },
   verificationInput: {
     flex: 1,
     backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: 8,
-    padding: 12,
-    marginRight: 8,
+    borderRadius: 16,
+    padding: 14,
+    marginRight: 12,
     color: '#fff',
-    fontSize: 16,
+    fontSize: 18,
   },
   verifyButton: {
     backgroundColor: '#007BFF',
-    borderRadius: 8,
-    paddingHorizontal: 16,
+    borderRadius: 16,
+    paddingHorizontal: 20,
     justifyContent: 'center',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
   },
   verifyButtonText: {
     color: '#FFFFFF',
     fontWeight: '600',
-    fontSize: 14,
+    fontSize: 15,
   },
   verifiedContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+    backgroundColor: 'rgba(76, 175, 80, 0.1)',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 24,
   },
   verifiedText: {
     marginLeft: 8,
     fontSize: 16,
     color: '#4CAF50',
-    fontWeight: '500',
-  },
-  languageContainer: {
+    fontWeight: '600',
+  },  languageContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    marginHorizontal: -4,
+    marginHorizontal: -6,
   },
   languageOption: {
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 20,
-    margin: 4,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 24,
+    margin: 6,
     backgroundColor: 'rgba(255, 255, 255, 0.1)',
   },
   selectedLanguage: {
     backgroundColor: 'rgba(0, 123, 255, 0.2)',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
   },
   languageText: {
-    fontSize: 14,
+    fontSize: 15,
   },
   selectedLanguageText: {
     fontWeight: '600',
@@ -421,29 +447,36 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 8,
+    paddingVertical: 12,
   },
   settingLabel: {
-    fontSize: 16,
+    fontSize: 17,
+    fontWeight: '500',
   },
   logoutButton: {
     backgroundColor: '#DC3545',
-    borderRadius: 8,
-    padding: 14,
+    borderRadius: 16,
+    padding: 16,
     alignItems: 'center',
-    marginBottom: 24,
+    marginBottom: 30,
+    marginTop: 10,
     flexDirection: 'row',
     justifyContent: 'center',
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 5,
   },
   disabledButton: {
     opacity: 0.7,
   },
   logoutIcon: {
-    marginRight: 8,
+    marginRight: 10,
   },
   logoutText: {
     color: '#FFFFFF',
     fontWeight: '600',
-    fontSize: 16,
+    fontSize: 17,
   },
 });

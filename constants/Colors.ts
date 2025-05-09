@@ -1,26 +1,56 @@
 /**
- * Below are the colors that are used in the app. The colors are defined in the light and dark mode.
- * There are many other ways to style your app. For example, [Nativewind](https://www.nativewind.dev/), [Tamagui](https://tamagui.dev/), [unistyles](https://reactnativeunistyles.vercel.app), etc.
+ * Colors used in the app for both light and dark modes.
+ * Enhanced with a cohesive color palette for better visual design.
  */
 
-const tintColorLight = '#0a7ea4';
-const tintColorDark = '#fff';
+const primaryColor = '#3B82F6'; // Blue
+const primaryColorDark = '#2563EB';
+const successColor = '#10B981'; // Green
+const dangerColor = '#EF4444';  // Red
+const warningColor = '#F59E0B'; // Amber
+const infoColor = '#06B6D4';    // Cyan
 
 export const Colors = {
   light: {
-    text: '#11181C',
-    background: '#fff',
-    tint: tintColorLight,
-    icon: '#687076',
-    tabIconDefault: '#687076',
-    tabIconSelected: tintColorLight,
+    text: '#111827',
+    textSecondary: '#4B5563',
+    textMuted: '#9CA3AF',
+    background: '#FFFFFF',
+    backgroundSecondary: '#F9FAFB',
+    backgroundTertiary: '#F3F4F6',
+    tint: primaryColor,
+    tintDarker: primaryColorDark,
+    border: '#E5E7EB',
+    icon: '#6B7280',
+    tabIconDefault: '#9CA3AF',
+    tabIconSelected: primaryColor,
+    success: successColor,
+    danger: dangerColor,
+    warning: warningColor,
+    info: infoColor,
+    card: '#FFFFFF',
+    shadow: '#000000',
+    overlay: 'rgba(0, 0, 0, 0.5)',
   },
   dark: {
-    text: '#ECEDEE',
-    background: '#151718',
-    tint: tintColorDark,
-    icon: '#9BA1A6',
-    tabIconDefault: '#9BA1A6',
-    tabIconSelected: tintColorDark,
+    text: '#F9FAFB',
+    textSecondary: '#E5E7EB',
+    textMuted: '#9CA3AF',
+    background: '#111827',
+    backgroundSecondary: '#1F2937',
+    backgroundTertiary: '#374151',
+    tint: '#60A5FA',
+    tintDarker: '#3B82F6',
+    border: '#374151',
+    icon: '#9CA3AF',
+    tabIconDefault: '#6B7280',
+    tabIconSelected: '#60A5FA',
+    success: '#34D399',
+    danger: '#F87171',
+    warning: '#FBBF24',
+    info: '#22D3EE',
+    card: '#1F2937',
+    shadow: '#000000',
+    overlay: 'rgba(0, 0, 0, 0.7)',
   },
 };
