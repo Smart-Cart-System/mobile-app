@@ -13,7 +13,9 @@ import { useThemeColor } from '@/hooks/useThemeColor';
 import { cartSessionService } from '@/services/api';
 
 const { width } = Dimensions.get('window');
-const CARD_WIDTH = (width - 48) / 2;
+// Calculate card width to ensure true two-column layout with proper spacing
+const CARD_WIDTH = (width - 100) / 2; // Adjusted to account for outer padding and gap
+const CARD_MARGIN = 10; // Gap between cards
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -27,9 +29,10 @@ export default function HomeScreen() {
   const [isLoadingSession, setIsLoadingSession] = useState(true);
   
   const [recommendedProducts, setRecommendedProducts] = useState([
-    { id: 1, name: 'Fresh Vegetables Pack', price: '$12.99', image: require('@/assets/images/icon.png') },
-    { id: 2, name: 'Dairy Products Bundle', price: '$8.50', image: require('@/assets/images/icon.png') },
+    { id: 1, name: 'Vegetables Pack', price: '$12.99', image: require('@/assets/images/icon.png') },
+    { id: 2, name: 'Dairy Bundle', price: '$8.50', image: require('@/assets/images/icon.png') },
     { id: 3, name: 'Bakery Essentials', price: '$10.75', image: require('@/assets/images/icon.png') },
+    { id: 4, name: 'Organic Fruit Pack', price: '$9.99', image: require('@/assets/images/icon.png') },
   ]);
 
   // Check for active cart session whenever the screen comes into focus
@@ -109,29 +112,35 @@ export default function HomeScreen() {
         </ThemedView>
         
         {isLoadingSession ? (
-          <ThemedView style={styles.loadingContainer}>
+          <View style={styles.loadingContainer}>
             <ActivityIndicator size="small" color={tintColor} />
             <ThemedText style={styles.loadingText}>Checking session status...</ThemedText>
-          </ThemedView>
+          </View>
         ) : activeCartSession ? (
           // Active session view
-          <ThemedView style={styles.activeSessionContainer}>
-            <ThemedView style={styles.sessionHeader}>
-              <Ionicons name="cart-outline" size={24} color={tintColor} />
+          <ThemedView 
+            variant="card" 
+            radius="large" 
+            useShadow 
+            intensity="low" 
+            style={styles.activeSessionContainer}
+          >
+            <View style={styles.sessionHeader}>
+              <Ionicons name="cart-outline" size={26} color={tintColor} />
               <ThemedText style={styles.sessionTitle}>Active Shopping Session</ThemedText>
-            </ThemedView>
+            </View>
             
-            <ThemedView style={styles.sessionDetails}>
-              <ThemedView style={styles.sessionDetail}>
+            <View style={styles.sessionDetails}>
+              <View style={styles.sessionDetail}>
                 <ThemedText style={styles.sessionDetailLabel}>Cart ID:</ThemedText>
                 <ThemedText style={styles.sessionDetailValue}>{activeCartSession.cart_id}</ThemedText>
-              </ThemedView>
+              </View>
               
-              <ThemedView style={styles.sessionDetail}>
+              <View style={styles.sessionDetail}>
                 <ThemedText style={styles.sessionDetailLabel}>Started:</ThemedText>
                 <ThemedText style={styles.sessionDetailValue}>{formatDate(activeCartSession.created_at)}</ThemedText>
-              </ThemedView>
-            </ThemedView>
+              </View>
+            </View>
             
             <TouchableOpacity 
               style={styles.endSessionButton} 
@@ -149,7 +158,7 @@ export default function HomeScreen() {
             activeOpacity={0.9}
           >
             <LinearGradient
-              colors={['#4CAF50', '#45A049']}
+              colors={['#4CAF50', '#3E9142']}
               style={styles.gradientButton}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
@@ -167,19 +176,28 @@ export default function HomeScreen() {
           
           <View style={styles.productList}>
             {recommendedProducts.map(product => (
-              <TouchableOpacity 
-                key={product.id} 
-                style={styles.productCardWrapper}
-                activeOpacity={0.7}
-              >
-                <ThemedView style={styles.productCard}>
-                  <View style={styles.imageContainer}>
-                    <Image source={product.image} style={styles.productImage} />
-                  </View>
-                  <ThemedText style={styles.productName} numberOfLines={2}>{product.name}</ThemedText>
-                  <ThemedText style={styles.productPrice}>{product.price}</ThemedText>
-                </ThemedView>
-              </TouchableOpacity>
+              <View key={product.id} style={styles.productCardWrapper}>
+                <TouchableOpacity 
+                  activeOpacity={0.7}
+                  style={{width: '100%'}}
+                >
+                  <ThemedView 
+                    variant="card" 
+                    radius="large" 
+                    useShadow 
+                    intensity="low" 
+                    style={styles.productCard}
+                  >
+                    <View style={styles.imageContainer}>
+                      <Image source={product.image} style={styles.productImage} />
+                    </View>
+                    <View style={styles.productTextContainer}>
+                      <ThemedText style={styles.productName} numberOfLines={2}>{product.name}</ThemedText>
+                      <ThemedText style={styles.productPrice}>{product.price}</ThemedText>
+                    </View>
+                  </ThemedView>
+                </TouchableOpacity>
+              </View>
             ))}
           </View>
         </ThemedView>
@@ -191,94 +209,108 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 16,
+    padding: 20,
   },
   titleContainer: {
-    marginBottom: 24,
+    marginBottom: 28,
     alignItems: 'center',
   },
   welcomeText: {
-    fontSize: 24,
+    fontSize: 30,
     fontWeight: 'bold',
-    marginTop: 8,
+    marginTop: 10,
   },
   subtitleText: {
-    fontSize: 16,
+    fontSize: 17,
     opacity: 0.8,
-    marginTop: 4,
+    marginTop: 6,
   },
   goRideButton: {
-    borderRadius: 12,
-    marginBottom: 32,
+    borderRadius: 20,
+    marginBottom: 36,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
+    shadowRadius: 5,
+    elevation: 6,
   },
   gradientButton: {
-    padding: 16,
+    padding: 18,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 12,
+    borderRadius: 20,
   },
   buttonIcon: {
-    marginRight: 8,
+    marginRight: 12,
   },
   goRideButtonText: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: 'bold',
     color: '#FFFFFF',
   },
   sectionContainer: {
-    marginBottom: 24,
+    marginBottom: 30,
   },
   sectionTitle: {
-    fontSize: 18,
+    fontSize: 22,
     fontWeight: 'bold',
     marginBottom: 8,
   },
   sectionSubtitle: {
-    fontSize: 14,
-    opacity: 0.8,
-    marginBottom: 16,
+    fontSize: 15,
+    opacity: 0.7,
+    marginBottom: 20,
   },
   productList: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
+    marginHorizontal: -CARD_MARGIN/2, // Negative margin to offset card margins
   },
   productCardWrapper: {
     width: CARD_WIDTH,
-    marginBottom: 16,
+    marginBottom: 20,
+    paddingHorizontal: CARD_MARGIN/2,
   },
   productCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: 10,
-    padding: 12,
+    borderRadius: 16,
+    padding: 14,
+    height: 200, // Height that works better for the card size
+    width: '100%',
     alignItems: 'center',
   },
   imageContainer: {
     width: 80,
     height: 80,
-    marginBottom: 8,
-    borderRadius: 8,
+    marginBottom: 12,
+    borderRadius: 12,
     overflow: 'hidden',
+    backgroundColor: 'rgba(240, 240, 240, 0.3)',
   },
   productImage: {
     width: '100%',
     height: '100%',
+    resizeMode: 'contain',
+  },
+  productTextContainer: {
+    width: '100%',
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    paddingHorizontal: 4,
   },
   productName: {
     fontSize: 14,
     fontWeight: '600',
     textAlign: 'center',
-    marginBottom: 4,
+    marginBottom: 6,
+    flexWrap: 'wrap',
   },
   productPrice: {
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: '700',
+    color: '#4CAF50', // Highlight price with a green color
   },
   reactLogo: {
     height: 400,
@@ -300,41 +332,48 @@ const styles = StyleSheet.create({
   },
   activeSessionContainer: {
     marginBottom: 32,
-    padding: 16,
-    borderRadius: 12,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    padding: 20,
+    borderRadius: 20, // Matching the large radius used elsewhere
   },
   sessionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 20,
   },
   sessionTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: 'bold',
-    marginLeft: 8,
+    marginLeft: 10,
   },
   sessionDetails: {
-    marginBottom: 16,
+    marginBottom: 20,
+    backgroundColor: 'rgba(240, 240, 240, 0.2)',
+    padding: 16,
+    borderRadius: 16,
   },
   sessionDetail: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 8,
+    marginBottom: 12,
   },
   sessionDetailLabel: {
-    fontSize: 14,
+    fontSize: 15,
     opacity: 0.8,
   },
   sessionDetailValue: {
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: 'bold',
   },
   endSessionButton: {
-    padding: 12,
-    borderRadius: 8,
+    padding: 14,
+    borderRadius: 16,
     backgroundColor: '#FF5252',
     alignItems: 'center',
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 5,
   },
   endSessionText: {
     fontSize: 16,

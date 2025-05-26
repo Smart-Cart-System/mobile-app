@@ -1,11 +1,13 @@
-import { StyleSheet, ScrollView, Image } from 'react-native';
+import { StyleSheet, ScrollView, TouchableOpacity, Image, View } from 'react-native';
 import { useState } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
+import { useThemeColor } from '@/hooks/useThemeColor';
 
 export default function HistoryScreen() {
+  const tintColor = useThemeColor({}, 'tint');
   const [purchaseHistory, setPurchaseHistory] = useState([
     { 
       id: 1, 
@@ -56,65 +58,71 @@ export default function HistoryScreen() {
     }
   };
 
-  return (
-    <ThemedView style={styles.container}>
+  return (    <ThemedView style={styles.container}>
       <ThemedText type="title" style={styles.title}>Purchase History</ThemedText>
       
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
         {purchaseHistory.map(purchase => (
-          <ThemedView key={purchase.id} style={styles.purchaseCard}>
-            <ThemedView style={styles.purchaseHeader}>
-              <ThemedView>
+          <ThemedView 
+            key={purchase.id} 
+            variant="card" 
+            radius="large" 
+            useShadow 
+            intensity="low"
+            style={styles.purchaseCard}
+          >
+            <View style={styles.purchaseHeader}>
+              <View>
                 <ThemedText style={styles.purchaseDate}>{purchase.date}</ThemedText>
                 <ThemedText style={styles.purchaseStore}>{purchase.store}</ThemedText>
-              </ThemedView>
-              <ThemedView style={styles.amountContainer}>
+              </View>
+              <View style={styles.amountContainer}>
                 <ThemedText style={styles.purchaseAmount}>{purchase.amount}</ThemedText>
-                <ThemedView style={styles.paymentMethod}>
+                <View style={styles.paymentMethod}>
                   <Ionicons 
                     name={purchase.paymentMethod === 'Credit Card' ? 'card-outline' : 'phone-portrait-outline'} 
                     size={14} 
-                    color="#666"
+                    color={tintColor}
                   />
                   <ThemedText style={styles.paymentMethodText}>{purchase.paymentMethod}</ThemedText>
-                </ThemedView>
-              </ThemedView>
-            </ThemedView>
+                </View>
+              </View>
+            </View>
             
-            <ThemedView style={styles.receiptActions}>
-              <ThemedView style={styles.buttonContainer}>
-                <Ionicons name="download-outline" size={20} color="#666" />
-                <ThemedText style={styles.actionText}>Download</ThemedText>
-              </ThemedView>
-              <ThemedView style={styles.buttonContainer} onTouchEnd={() => toggleReceipt(purchase.id)}>
+            <View style={styles.receiptActions}>
+              <TouchableOpacity style={styles.buttonContainer}>
+                <Ionicons name="download-outline" size={20} color={tintColor} />
+                <ThemedText style={[styles.actionText, { color: tintColor }]}>Download</ThemedText>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.buttonContainer} onPress={() => toggleReceipt(purchase.id)}>
                 <Ionicons 
                   name={expandedReceipt === purchase.id ? "chevron-up-outline" : "chevron-down-outline"} 
                   size={20} 
-                  color="#666" 
+                  color={tintColor} 
                 />
-                <ThemedText style={styles.actionText}>
+                <ThemedText style={[styles.actionText, { color: tintColor }]}>
                   {expandedReceipt === purchase.id ? "Hide Details" : "View Details"}
                 </ThemedText>
-              </ThemedView>
-            </ThemedView>
+              </TouchableOpacity>
+            </View>
             
             {expandedReceipt === purchase.id && (
-              <ThemedView style={styles.receiptDetails}>
+              <View style={styles.receiptDetails}>
                 <ThemedText style={styles.receiptTitle}>Receipt Details</ThemedText>
                 {purchase.items.map(item => (
-                  <ThemedView key={item.id} style={styles.receiptItem}>
-                    <ThemedView style={styles.itemInfo}>
+                  <View key={item.id} style={styles.receiptItem}>
+                    <View style={styles.itemInfo}>
                       <ThemedText style={styles.itemName}>{item.name}</ThemedText>
                       <ThemedText style={styles.itemQuantity}>x{item.quantity}</ThemedText>
-                    </ThemedView>
+                    </View>
                     <ThemedText style={styles.itemPrice}>{item.price}</ThemedText>
-                  </ThemedView>
+                  </View>
                 ))}
-                <ThemedView style={styles.receiptTotal}>
+                <View style={styles.receiptTotal}>
                   <ThemedText style={styles.totalLabel}>Total</ThemedText>
                   <ThemedText style={styles.totalAmount}>{purchase.amount}</ThemedText>
-                </ThemedView>
-              </ThemedView>
+                </View>
+              </View>
             )}
           </ThemedView>
         ))}
@@ -126,37 +134,41 @@ export default function HistoryScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 16,
+    padding: 20,
     paddingTop: 60,
+  },
+  scrollContent: {
+    paddingBottom: 24,
   },
   title: {
     marginBottom: 24,
+    fontSize: 30,
+    fontWeight: '700',
   },
   purchaseCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 16,
+    padding: 18,
+    marginBottom: 18,
+    borderRadius: 20, // Ensure consistent radius even if ThemedView fails
   },
   purchaseHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 12,
+    marginBottom: 14,
   },
   purchaseDate: {
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: '600',
     marginBottom: 4,
   },
   purchaseStore: {
-    fontSize: 14,
+    fontSize: 15,
     opacity: 0.7,
   },
   amountContainer: {
     alignItems: 'flex-end',
   },
   purchaseAmount: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: '700',
     marginBottom: 4,
   },
@@ -173,64 +185,68 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-around',
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: 'rgba(128, 128, 128, 0.2)',
+    borderTopColor: 'rgba(128, 128, 128, 0.15)',
     paddingTop: 12,
+    marginTop: 2,
   },
   buttonContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 8,
+    padding: 10,
+    borderRadius: 20,
   },
   actionText: {
     marginLeft: 6,
     fontSize: 14,
+    fontWeight: '500',
   },
   receiptDetails: {
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: 'rgba(128, 128, 128, 0.2)',
-    paddingTop: 16,
-    marginTop: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 16,
+    marginTop: 14,
+    backgroundColor: 'rgba(240, 240, 240, 0.3)',
+    borderRadius: 16,
   },
   receiptTitle: {
     fontSize: 16,
     fontWeight: '600',
-    marginBottom: 12,
+    marginBottom: 14,
   },
   receiptItem: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 8,
+    marginBottom: 10,
   },
   itemInfo: {
     flexDirection: 'row',
     flex: 1,
   },
   itemName: {
-    fontSize: 14,
+    fontSize: 15,
     marginRight: 8,
   },
   itemQuantity: {
-    fontSize: 14,
+    fontSize: 15,
     opacity: 0.7,
   },
   itemPrice: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '500',
   },
   receiptTotal: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: 'rgba(128, 128, 128, 0.2)',
-    paddingTop: 12,
-    marginTop: 8,
+    borderTopColor: 'rgba(128, 128, 128, 0.15)',
+    paddingTop: 14,
+    marginTop: 10,
   },
   totalLabel: {
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: '600',
   },
   totalAmount: {
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: '700',
   },
 });

@@ -447,41 +447,38 @@ export default function ChecklistScreen() {
       </ScrollView>
     </ThemedView>
   );
-}
-
-// --- Styles --- (Mostly unchanged, minor adjustments noted)
+}  // --- Styles ---
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    // Background color is handled by ThemedView
   },
   header: {
     paddingHorizontal: 20,
-    paddingTop: 60, // Adjust as needed for status bar/notch
-    paddingBottom: 16,
-    backgroundColor: 'transparent', // Let ThemedView handle background
+    paddingTop: 60,
+    paddingBottom: 20,
+    backgroundColor: 'transparent',
   },
   title: {
-    fontSize: 32,
-    fontWeight: 'bold', // Changed from 700
+    fontSize: 30,
+    fontWeight: 'bold',
     letterSpacing: 0.5,
-    // Color is handled by ThemedText
+    marginBottom: 8,
   },
   addNewSection: {
     paddingHorizontal: 20,
-    paddingBottom: 16,
+    paddingBottom: 20,
     backgroundColor: 'transparent',
   },
   addNewContainer: {
     flexDirection: 'row',
-    borderRadius: 15,
+    borderRadius: 20,
     overflow: 'hidden',
-    // Shadows for depth
-    elevation: 3,
+    // Enhanced shadows for depth
+    elevation: 4,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
   },
   textInput: {
     flex: 1,
@@ -496,24 +493,23 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: 'rgba(255, 255, 255, 0.2)', // Subtle background
-  },
-  scanButton: {
+  },  scanButton: {
     marginHorizontal: 20,
-    marginBottom: 20, // Adjusted margin
-    borderRadius: 15,
+    marginBottom: 24,
+    borderRadius: 20,
     overflow: 'hidden',
-    // Shadows for depth
-    elevation: 3,
+    // Enhanced shadows for depth
+    elevation: 4,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
   },
   scanButtonGradient: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 14, // Adjusted padding
+    paddingVertical: 16,
   },
   scanIcon: {
     marginRight: 10,
@@ -530,20 +526,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 4, // Small padding at the top of scroll
     paddingBottom: 40, // More padding at the bottom
-  },
-  checklistCard: {
-    borderRadius: 18,
+  },  checklistCard: {
+    borderRadius: 20,
     marginBottom: 20,
-    padding: 18, // Adjusted padding
-    // backgroundColor handled by ThemedView, but provide a fallback/base
-    backgroundColor: 'rgba(255, 255, 255, 0.05)', // Very subtle background in case theme fails
-    elevation: 1,
+    padding: 20,
+    // backgroundColor handled by ThemedView
+    elevation: 2,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)', // Subtle border
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 5,
+    borderWidth: 1, 
     overflow: 'hidden', // Clip content within border radius
   },
   checklistHeader: {
@@ -559,18 +552,28 @@ const styles = StyleSheet.create({
     flex: 1, // Allow title to take available space
     marginRight: 12,
     // Color from ThemedText
-  },
-  shareButton: {
+  },  shareButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 6,
-    paddingHorizontal: 12,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
     borderRadius: 20,
     backgroundColor: 'rgba(0, 122, 255, 0.15)', // Default share button bg
+    // Add subtle shadow for depth
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 1,
   },
   activeShareButton: {
     backgroundColor: '#007BFF', // Active share button bg (example blue)
-    // Could also use tintColor here if desired
+    // Add stronger shadow for active state
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 3,
+    elevation: 2,
   },
   shareButtonText: {
     fontSize: 13, // Slightly smaller text
@@ -581,18 +584,23 @@ const styles = StyleSheet.create({
   progressContainer: {
     marginBottom: 16,
     backgroundColor: 'transparent',
-  },
-  progressBar: {
-    height: 6, // Slimmer progress bar
+  },  progressBar: {
+    height: 8, // Slightly taller for better visibility
     backgroundColor: 'rgba(200, 200, 200, 0.2)', // Background of the bar track
-    borderRadius: 3,
+    borderRadius: 4,
     overflow: 'hidden',
-    marginBottom: 6, // Adjusted margin
+    marginBottom: 8, // Adjusted margin
+    // Add subtle shadow for depth
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 1,
+    elevation: 1,
   },
   progressFill: {
     height: '100%',
     // backgroundColor set inline (using tintColor)
-    borderRadius: 3,
+    borderRadius: 4,
   },
   progressText: {
     fontSize: 12, // Smaller progress text
@@ -604,13 +612,14 @@ const styles = StyleSheet.create({
   itemsContainer: {
     // Container for the list items
     backgroundColor: 'transparent',
-  },
-  checklistItem: {
+  },  checklistItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 12, // Adjusted padding
+    paddingVertical: 14, // More vertical space for better touch targets
+    paddingHorizontal: 2, // Slight horizontal padding
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(200, 200, 200, 0.1)', // Lighter separator
+    borderRadius: 4, // Slight border radius for a modern touch
   },
   emptyListText: {
       paddingVertical: 20,
@@ -618,16 +627,21 @@ const styles = StyleSheet.create({
       fontSize: 15,
       opacity: 0.6,
       fontStyle: 'italic',
-  },
-  checkboxContainer: {
-    width: 22, // Slightly smaller checkbox
-    height: 22,
-    borderRadius: 11,
+  },  checkboxContainer: {
+    width: 24, // Slightly larger checkbox for better visibility
+    height: 24,
+    borderRadius: 12,
     borderWidth: 2,
     // borderColor set inline based on state and theme
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 14, // Increased spacing
+    marginRight: 16, // Increased spacing
+    // Add subtle shadow for depth
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 1,
+    elevation: 1,
   },
   checkboxCompleted: {
     // backgroundColor set inline using tintColor
@@ -642,21 +656,21 @@ const styles = StyleSheet.create({
   completedItemText: {
     textDecorationLine: 'line-through',
     opacity: 0.5, // More faded when completed
-  },
-  newItemContainer: {
+  },  newItemContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 12, // Adjusted margin
-    paddingTop: 12,
+    marginTop: 16, // More space between items and new item input
+    paddingTop: 14,
     borderTopWidth: 1,
     borderTopColor: 'rgba(200, 200, 200, 0.1)', // Lighter separator
     backgroundColor: 'transparent',
   },
   newItemInput: {
     flex: 1,
-    paddingVertical: 10, // Adjusted padding
-    paddingHorizontal: 4, // Less horizontal padding needed here
+    paddingVertical: 12, // More vertical padding for better touch experience
+    paddingHorizontal: 8, // Slightly more horizontal padding
     fontSize: 16,
+    fontWeight: '500', // Medium weight for input text
     // Color from ThemedText via inline style
   },
   addItemButton: {
