@@ -5,22 +5,21 @@ import { Ionicons } from '@expo/vector-icons';
 
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
-import { authService } from '@/services/api';
-import { useAuth } from '@/app/_layout';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function SignInScreen() {
-  const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
-  const { signIn } = useAuth();
+  const { login } = useAuth();
 
   const handleSignIn = async () => {
     // Validate inputs
-    if (!email.trim() || !password.trim()) {
-      Alert.alert('Error', 'Please enter both email and password');
+    if (!username.trim() || !password.trim()) {
+      Alert.alert('Error', 'Please enter both username and password');
       return;
     }
 
@@ -29,15 +28,12 @@ export default function SignInScreen() {
     setIsLoading(true);
 
     try {
-      console.log("Attempting to sign in with email:", email);
-      // Call the authentication API
-      const response = await authService.login(email, password);
-      console.log("Sign-in successful. Setting auth token...");
+      console.log("Attempting to sign in with username:", username);
+      // Call the new authentication API
+      await login(username, password);
+      console.log("Sign-in successful!");
       
-      // Use the auth context to set the token and trigger navigation
-      await signIn(response.access_token);
-      
-      // No need to manually navigate as the context will handle it
+      // Navigation will be handled automatically by the auth context
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'An error occurred during sign in';
       setError(errorMessage);
@@ -47,9 +43,8 @@ export default function SignInScreen() {
       setIsLoading(false);
     }
   };
-
   const handleSignUp = () => {
-    router.push('./sign-up');
+    router.push('/sign-up');
   };
 
   const handleForgotPassword = () => {
@@ -65,8 +60,7 @@ export default function SignInScreen() {
     >
       <Stack.Screen options={{ headerShown: false }} />
       <ScrollView contentContainerStyle={styles.container}>
-        <View style={styles.logoContainer}>
-          <Image
+        <View style={styles.logoContainer}>          <Image
             source={require('@/assets/images/icon.png')}
             style={styles.logo}
           />
@@ -85,15 +79,14 @@ export default function SignInScreen() {
           )}
 
           <View style={styles.inputContainer}>
-            <Ionicons name="mail-outline" size={20} color="#999" style={styles.inputIcon} />
+            <Ionicons name="person-outline" size={20} color="#999" style={styles.inputIcon} />
             <TextInput
               style={styles.input}
-              placeholder="Email"
+              placeholder="Username"
               placeholderTextColor="#999"
-              value={email}
-              onChangeText={setEmail}
+              value={username}
+              onChangeText={setUsername}
               autoCapitalize="none"
-              keyboardType="email-address"
             />
           </View>
 

@@ -5,24 +5,28 @@ import { Ionicons } from '@expo/vector-icons';
 
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
-import { authService } from '@/services/api';
-import { useAuth } from '@/app/_layout';
+import { useAuth } from '@/contexts/AuthContext';
+import { UserCreatePayload } from '@/services/api';
 
 export default function SignUpScreen() {
   const [fullName, setFullName] = useState('');
+  const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
+  const [mobileNumber, setMobileNumber] = useState('');
+  const [age, setAge] = useState('');
+  const [address, setAddress] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
-  const { signIn } = useAuth();
+  const { signup } = useAuth();
 
   const handleSignUp = async () => {
     // Validate inputs
-    if (!fullName.trim() || !email.trim() || !password.trim() || !confirmPassword.trim()) {
-      Alert.alert('Error', 'Please fill in all fields');
+    if (!fullName.trim() || !username.trim() || !email.trim() || !mobileNumber.trim() || !age.trim() || !password.trim() || !confirmPassword.trim()) {
+      Alert.alert('Error', 'Please fill in all required fields');
       return;
     }
 
@@ -31,23 +35,35 @@ export default function SignUpScreen() {
       return;
     }
 
+    const ageNumber = parseInt(age);
+    if (isNaN(ageNumber) || ageNumber < 1) {
+      Alert.alert('Error', 'Please enter a valid age');
+      return;
+    }
+
     // Clear previous errors
     setError(null);
     setIsLoading(true);
 
     try {
-      // Call API to register user
-      await authService.signup({
-        full_name: fullName,
+      const payload: UserCreatePayload = {
+        username,
         email,
-        password
-      });
+        password,
+        mobile_number: mobileNumber,
+        age: ageNumber,
+        full_name: fullName,
+        address: address.trim() || undefined, // Optional field
+      };
+
+      // Call API to register user
+      await signup(payload);
       
-      // After successful signup, automatically log in the user
-      const loginResponse = await authService.login(email, password);
-      
-      // Use the auth context to set the token which will automatically redirect
-      await signIn(loginResponse.access_token);
+      Alert.alert(
+        'Success', 
+        'Account created successfully! Please sign in with your credentials.',
+        [{ text: 'OK', onPress: () => router.replace('/sign-in') }]
+      );
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'An error occurred during registration';
       setError(errorMessage);
@@ -74,11 +90,8 @@ export default function SignUpScreen() {
             style={styles.logo}
           />
           <ThemedText style={styles.appName}>ShopScan</ThemedText>
-        </View>
-
-        <View style={styles.formContainer}>
-          <ThemedText style={styles.title}>Create Account</ThemedText>
-          <ThemedText style={styles.subtitle}>Sign up to get started with ShopScan</ThemedText>
+        </View>        <View style={styles.formContainer}>
+          <ThemedText style={styles.title}>Create Account</ThemedText>          <ThemedText style={styles.subtitle}>Sign up to get started with ShopScan</ThemedText>
 
           {error && (
             <ThemedView style={styles.errorContainer}>
@@ -99,6 +112,18 @@ export default function SignUpScreen() {
           </View>
 
           <View style={styles.inputContainer}>
+            <Ionicons name="at-outline" size={20} color="#999" style={styles.inputIcon} />
+            <TextInput
+              style={styles.input}
+              placeholder="Username"
+              placeholderTextColor="#999"
+              value={username}
+              onChangeText={setUsername}
+              autoCapitalize="none"
+            />
+          </View>
+
+          <View style={styles.inputContainer}>
             <Ionicons name="mail-outline" size={20} color="#999" style={styles.inputIcon} />
             <TextInput
               style={styles.input}
@@ -108,6 +133,41 @@ export default function SignUpScreen() {
               onChangeText={setEmail}
               autoCapitalize="none"
               keyboardType="email-address"
+            />
+          </View>
+
+          <View style={styles.inputContainer}>
+            <Ionicons name="call-outline" size={20} color="#999" style={styles.inputIcon} />
+            <TextInput
+              style={styles.input}
+              placeholder="Mobile Number"
+              placeholderTextColor="#999"
+              value={mobileNumber}
+              onChangeText={setMobileNumber}
+              keyboardType="phone-pad"
+            />
+          </View>
+
+          <View style={styles.inputContainer}>
+            <Ionicons name="calendar-outline" size={20} color="#999" style={styles.inputIcon} />
+            <TextInput
+              style={styles.input}
+              placeholder="Age"
+              placeholderTextColor="#999"
+              value={age}
+              onChangeText={setAge}
+              keyboardType="numeric"
+            />
+          </View>
+
+          <View style={styles.inputContainer}>
+            <Ionicons name="location-outline" size={20} color="#999" style={styles.inputIcon} />
+            <TextInput
+              style={styles.input}
+              placeholder="Address (Optional)"
+              placeholderTextColor="#999"
+              value={address}
+              onChangeText={setAddress}
             />
           </View>
 
@@ -167,11 +227,9 @@ export default function SignUpScreen() {
             ) : (
               <ThemedText style={styles.buttonText}>Sign Up</ThemedText>
             )}
-          </TouchableOpacity>
-
-          <ThemedView style={styles.signInContainer}>
+          </TouchableOpacity>          <ThemedView style={styles.signInContainer}>
             <ThemedText style={styles.signInText}>Already have an account?</ThemedText>
-            <TouchableOpacity onPress={handleSignIn}>
+            <TouchableOpacity onPress={handleSignIn} style={{ marginLeft: 4 }}>
               <ThemedText style={styles.signInLink}>Sign In</ThemedText>
             </TouchableOpacity>
           </ThemedView>

@@ -3,274 +3,237 @@ import {
   ScrollView,
   TextInput,
   TouchableOpacity,
-  Animated, // Keep if used elsewhere, otherwise removable
-  Dimensions,
   View,
-  Alert, // Added for confirmation/error messages
+  Alert,
+  ActivityIndicator,
 } from 'react-native';
-import { useState, useRef, useEffect } from 'react'; // Added useEffect
+import { useState, useRef, useEffect } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import * as Sharing from 'expo-sharing';
 import { LinearGradient } from 'expo-linear-gradient';
-// import { BlurView } from 'expo-blur'; // Uncomment if you use BlurView
 
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
-import { useRouter, useLocalSearchParams } from 'expo-router'; // Added useLocalSearchParams
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useThemeColor } from '@/hooks/useThemeColor';
-
-const { width } = Dimensions.get('window');
-
-// --- Type Definitions ---
-type ChecklistItem = {
-  id: string;
-  text: string;
-  isCompleted: boolean;
-  createdAt: Date;
-};
-
-type Checklist = {
-  id: string;
-  title: string;
-  items: ChecklistItem[];
-  createdAt: Date;
-  isShared: boolean;
-};
+import { checklistService, Checklist, ChecklistItem } from '@/services';
 
 // --- Component ---
 export default function ChecklistScreen() {
   const tintColor = useThemeColor({}, 'tint');
-  const backgroundColor = useThemeColor({}, 'background'); // Keep if explicitly needed, ThemedView handles it
-  const textColor = useThemeColor({}, 'text'); // Keep if explicitly needed, ThemedText handles it
   const router = useRouter();
-  const params = useLocalSearchParams<{ newItemsFromOCR?: string }>(); // Get local search params
+  const params = useLocalSearchParams<{ newItemsFromOCR?: string }>();
 
   // --- State ---
   const [newListTitle, setNewListTitle] = useState('');
   const [newItemTexts, setNewItemTexts] = useState<{ [key: string]: string }>({});
-  const [checklists, setChecklists] = useState<Checklist[]>([
-    // Initial Example Data (can be removed or kept for testing)
-    {
-      id: '1',
-      title: 'Grocery Shopping',
-      items: [
-        { id: '1-1', text: 'Milk', isCompleted: true, createdAt: new Date() },
-        { id: '1-2', text: 'Eggs', isCompleted: false, createdAt: new Date() },
-        { id: '1-3', text: 'Bread', isCompleted: false, createdAt: new Date() },
-        { id: '1-4', text: 'Fruits', isCompleted: true, createdAt: new Date() },
-      ],
-      createdAt: new Date(),
-      isShared: false,
-    },
-    {
-      id: '2',
-      title: 'Weekend Tasks',
-      items: [
-        { id: '2-1', text: 'Clean kitchen', isCompleted: false, createdAt: new Date() },
-        { id: '2-2', text: 'Laundry', isCompleted: true, createdAt: new Date() },
-        { id: '2-3', text: 'Call mom', isCompleted: false, createdAt: new Date() },
-      ],
-      createdAt: new Date(),
-      isShared: true,
-    },
-  ]);
-
+  const [checklists, setChecklists] = useState<Checklist[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isCreatingChecklist, setIsCreatingChecklist] = useState(false);
   const scrollViewRef = useRef<ScrollView>(null);
+
+  // --- Load checklists on component mount ---
+  useEffect(() => {
+    loadChecklists();
+  }, []);
+
+  const loadChecklists = async () => {
+    try {
+      setIsLoading(true);
+      const fetchedChecklists = await checklistService.getAllChecklists();
+      setChecklists(fetchedChecklists);
+    } catch (error) {
+      console.error('Error loading checklists:', error);
+      Alert.alert('Error', 'Failed to load checklists. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   // --- Effect to Handle Incoming OCR Items ---
   useEffect(() => {
     if (params.newItemsFromOCR) {
-      console.log("Received OCR Params:", params.newItemsFromOCR); // Debug log
+      console.log("Received OCR Params:", params.newItemsFromOCR);
       try {
         const itemsArray: string[] = JSON.parse(params.newItemsFromOCR);
 
         if (Array.isArray(itemsArray) && itemsArray.length > 0) {
-          // Create checklist items from the received strings
-          const newChecklistItems: ChecklistItem[] = itemsArray.map((text, index) => ({
-            id: `${Date.now()}-${index}`, // Simple unique ID generation
-            text: text.trim(), // Trim whitespace just in case
-            isCompleted: false,
-            createdAt: new Date(),
-          }));
-
-          // Create the new checklist
-          const newChecklist: Checklist = {
-            id: `ocr-${Date.now()}`, // Unique ID for the list
-            title: 'Scanned Checklist', // Default title
-            items: newChecklistItems,
-            createdAt: new Date(),
-            isShared: false,
-          };
-
-          // Add the new checklist to the state (at the beginning)
-          setChecklists(prevChecklists => [newChecklist, ...prevChecklists]);
-
-          // Scroll to top to show the new list
-          setTimeout(() => {
-            scrollViewRef.current?.scrollTo({ y: 0, animated: true });
-          }, 100);
-
-          // IMPORTANT: Clear the param so this doesn't run again on re-renders
-          router.setParams({ newItemsFromOCR: undefined });
-          console.log("Cleared OCR Params"); // Debug log
-
-          // Optional: Show a confirmation alert
-          Alert.alert("Success", `Created 'Scanned Checklist' with ${itemsArray.length} items.`);
-
+          createChecklistFromOCR(itemsArray);
         } else {
-           console.warn("Received empty or invalid items from OCR parameter.");
-           router.setParams({ newItemsFromOCR: undefined }); // Clear invalid param
+          console.warn("Received empty or invalid items from OCR parameter.");
+          router.setParams({ newItemsFromOCR: undefined });
         }
-
       } catch (error) {
         console.error("Error parsing OCR items parameter:", error);
         Alert.alert("Error", "Could not process items from the scanner.");
-        // Clear the param even if there's an error
         router.setParams({ newItemsFromOCR: undefined });
       }
     }
-  }, [params.newItemsFromOCR, router]); // Depend on the param and router
+  }, [params.newItemsFromOCR, router]);
+
+  const createChecklistFromOCR = async (itemsArray: string[]) => {
+    try {
+      setIsCreatingChecklist(true);
+
+      const checklistData = {
+        name: 'Scanned Checklist',
+        items: itemsArray.map(text => ({
+          text: text.trim(),
+          checked: false
+        }))
+      };
+
+      const newChecklist = await checklistService.createChecklist(checklistData);
+      setChecklists(prevChecklists => [newChecklist, ...prevChecklists]);
+
+      setTimeout(() => {
+        scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+      }, 100);
+
+      router.setParams({ newItemsFromOCR: undefined });
+      Alert.alert("Success", "Created 'Scanned Checklist' with " + itemsArray.length + " items.");
+    } catch (error) {
+      console.error('Error creating checklist from OCR:', error);
+      Alert.alert('Error', 'Failed to create checklist from scanned items.');
+    } finally {
+      setIsCreatingChecklist(false);
+    }
+  };
 
   // --- Functions ---
-  const toggleItemCompletion = (checklistId: string, itemId: string) => {
-    setChecklists(prevChecklists =>
-      prevChecklists.map(checklist => {
-        if (checklist.id === checklistId) {
-          return {
-            ...checklist,
-            items: checklist.items.map(item => {
-              if (item.id === itemId) {
-                return { ...item, isCompleted: !item.isCompleted };
-              }
-              return item;
-            }),
-          };
-        }
-        return checklist;
-      })
-    );
+  const toggleItemCompletion = async (checklistId: number, itemId: number) => {
+    try {
+      const checklist = checklists.find(c => c.id === checklistId);
+      const item = checklist?.items.find(i => i.id === itemId);
+
+      if (!item) return;
+
+      const updatedItem = await checklistService.updateItem(checklistId, itemId, {
+        checked: !item.checked
+      });
+
+      setChecklists(prevChecklists =>
+        prevChecklists.map(checklist => {
+          if (checklist.id === checklistId) {
+            return {
+              ...checklist,
+              items: checklist.items.map(item =>
+                item.id === itemId ? updatedItem : item
+              ),
+            };
+          }
+          return checklist;
+        })
+      );
+    } catch (error) {
+      console.error('Error toggling item completion:', error);
+      Alert.alert('Error', 'Failed to update item. Please try again.');
+    }
   };
 
-  const addNewChecklist = () => {
+  const addNewChecklist = async () => {
     if (newListTitle.trim() === '') return;
 
-    const newChecklist: Checklist = {
-      id: Date.now().toString(),
-      title: newListTitle.trim(),
-      items: [],
-      createdAt: new Date(),
-      isShared: false,
-    };
+    try {
+      setIsCreatingChecklist(true);
+      const newChecklist = await checklistService.createChecklist({
+        name: newListTitle.trim(),
+        items: []
+      });
 
-    setChecklists(prevChecklists => [newChecklist, ...prevChecklists]);
-    setNewListTitle('');
+      setChecklists(prevChecklists => [newChecklist, ...prevChecklists]);
+      setNewListTitle('');
 
-    // Scroll to top to show the new checklist
-    setTimeout(() => {
-      scrollViewRef.current?.scrollTo({ y: 0, animated: true });
-    }, 100);
+      setTimeout(() => {
+        scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+      }, 100);
+    } catch (error) {
+      console.error('Error creating checklist:', error);
+      Alert.alert('Error', 'Failed to create checklist. Please try again.');
+    } finally {
+      setIsCreatingChecklist(false);
+    }
   };
 
-  const addNewItem = (checklistId: string) => {
-    const itemText = newItemTexts[checklistId];
+  const addNewItem = async (checklistId: number) => {
+    const itemText = newItemTexts[checklistId.toString()];
     if (!itemText || itemText.trim() === '') return;
 
-    setChecklists(prevChecklists =>
-      prevChecklists.map(checklist => {
-        if (checklist.id === checklistId) {
-          const newItem: ChecklistItem = {
-            id: `${checklistId}-${Date.now()}`,
-            text: itemText.trim(),
-            isCompleted: false,
-            createdAt: new Date()
-          };
+    try {
+      const newItem = await checklistService.addItem(checklistId, {
+        text: itemText.trim(),
+        checked: false
+      });
 
-          // Add new item to the end of the list
-          return {
-            ...checklist,
-            items: [...checklist.items, newItem]
-          };
-        }
-        return checklist;
-      })
-    );
+      setChecklists(prevChecklists =>
+        prevChecklists.map(checklist => {
+          if (checklist.id === checklistId) {
+            return {
+              ...checklist,
+              items: [...checklist.items, newItem]
+            };
+          }
+          return checklist;
+        })
+      );
 
-    // Clear the input for that specific checklist
-    setNewItemTexts(prev => ({
-      ...prev,
-      [checklistId]: ''
-    }));
+      setNewItemTexts(prev => ({
+        ...prev,
+        [checklistId.toString()]: ''
+      }));
+    } catch (error) {
+      console.error('Error adding item:', error);
+      Alert.alert('Error', 'Failed to add item. Please try again.');
+    }
   };
 
-  const shareChecklist = async (checklistId: string) => {
+  const shareChecklist = async (checklistId: number) => {
     const checklist = checklists.find(c => c.id === checklistId);
     if (!checklist) return;
 
-    // Toggle shared state locally first (optimistic update)
-    setChecklists(prevChecklists =>
-      prevChecklists.map(c => {
-        if (c.id === checklistId) {
-          return {
-            ...c,
-            isShared: !c.isShared, // Toggle the state
-          };
-        }
-        return c;
-      })
-    );
+    const message = `Checklist: ${checklist.name}\n\n` +
+      checklist.items.map(item => `- ${item.checked ? '[x]' : '[ ]'} ${item.text}`).join('\n');
 
-    // Prepare message for sharing
-    const message = `Checklist: ${checklist.title}\n\n` +
-      checklist.items.map(item => `- ${item.isCompleted ? '[x]' : '[ ]'} ${item.text}`).join('\n'); // Using text-based markers
-
-    // Attempt to use Expo Sharing
     if (await Sharing.isAvailableAsync()) {
       try {
         await Sharing.shareAsync(`data:text/plain;,${encodeURIComponent(message)}`, {
-          dialogTitle: `Share "${checklist.title}" checklist`,
+          dialogTitle: `Share "${checklist.name}" checklist`,
           mimeType: 'text/plain',
-          UTI: 'public.plain-text', // For iOS compatibility
+          UTI: 'public.plain-text',
         });
-        // Optionally confirm sharing success or handle completion
-        // Note: Sharing doesn't guarantee the user actually sent it.
       } catch (error) {
         console.error('Error sharing checklist:', error);
         Alert.alert('Sharing Failed', 'Could not share the checklist.');
-        // Optional: Revert the isShared state if sharing fails critically
-        setChecklists(prevChecklists =>
-          prevChecklists.map(c => {
-            if (c.id === checklistId) {
-              return { ...c, isShared: !c.isShared }; // Revert toggle on error
-            }
-            return c;
-          })
-        );
       }
     } else {
       Alert.alert('Sharing Not Available', 'Sharing is not available on this device.');
-       // Revert the isShared state if sharing is not possible
-       setChecklists(prevChecklists =>
-          prevChecklists.map(c => {
-            if (c.id === checklistId) {
-              return { ...c, isShared: !c.isShared }; // Revert toggle
-            }
-            return c;
-          })
-        );
     }
   };
 
   const handleScanOCR = () => {
-     // Make sure this path matches your file structure for the scanner screen
-     // e.g., '/ocr-scanner' if it's at the root of 'app'
+    // Make sure this path matches your file structure for the scanner screen
+    // e.g., '/ocr-scanner' if it's at the root of 'app'
     router.push('/ocr-scanner');
   };
-
   const getCompletionPercentage = (items: ChecklistItem[]) => {
     if (!items || items.length === 0) return 0;
-    const completedItems = items.filter(item => item.isCompleted);
+    const completedItems = items.filter(item => item.checked);
     return (completedItems.length / items.length) * 100;
   };
+
+  // Show loading indicator while fetching checklists
+  if (isLoading) {
+    return (<ThemedView style={styles.container}>
+      <ThemedView style={styles.header}>
+        <ThemedText type="title" style={styles.title}>My Checklists</ThemedText>
+      </ThemedView>
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={tintColor || '#007AFF'} />
+        <ThemedText style={styles.loadingText}>Loading checklists...</ThemedText>
+      </View>
+    </ThemedView>
+    );
+  }
 
   // --- Render ---
   return (
@@ -289,21 +252,28 @@ export default function ChecklistScreen() {
           style={styles.addNewContainer}
         >
           <TextInput
-            style={[styles.textInput, { color: '#fff' }]} // Explicit white color for text input
+            style={[styles.textInput, { color: '#fff' }]}
             placeholder="New checklist title..."
             placeholderTextColor="rgba(255, 255, 255, 0.7)"
             value={newListTitle}
             onChangeText={setNewListTitle}
-            onSubmitEditing={addNewChecklist} // Allows creating list by pressing return/done
+            onSubmitEditing={addNewChecklist}
             returnKeyType="done"
           />
           <TouchableOpacity
-            style={styles.addButton}
-            onPress={addNewChecklist}
-            disabled={newListTitle.trim() === ''} // Disable button if title is empty
+            style={styles.addButton}            onPress={addNewChecklist}
+            disabled={newListTitle.trim() === '' || isCreatingChecklist}
             activeOpacity={0.7}
           >
-            <Ionicons name="add" size={28} color={newListTitle.trim() === '' ? 'rgba(255,255,255,0.4)' : '#FFF'} />
+            {isCreatingChecklist ? (
+            <ActivityIndicator size="small" color="#FFF" />
+          ) : (
+            <Ionicons
+              name="add"
+              size={28}
+              color={newListTitle.trim() === '' ? 'rgba(255,255,255,0.4)' : '#FFF'}
+            />
+          )}
           </TouchableOpacity>
         </LinearGradient>
       </ThemedView>
@@ -315,7 +285,6 @@ export default function ChecklistScreen() {
         activeOpacity={0.8}
       >
         <LinearGradient
-          // Green gradient for scan button
           colors={['rgba(52, 168, 83, 0.9)', 'rgba(21, 128, 61, 0.9)']}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 0 }}
@@ -328,126 +297,125 @@ export default function ChecklistScreen() {
 
       {/* Checklists */}
       <ScrollView
-        ref={scrollViewRef}
-        style={styles.checklistsContainer}
+        ref={scrollViewRef}        style={styles.checklistsContainer}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
-        keyboardShouldPersistTaps="handled" // Dismiss keyboard when tapping outside inputs
+        keyboardShouldPersistTaps="handled"
       >
         {checklists.map(checklist => {
-          const completionPercentage = getCompletionPercentage(checklist.items);
-          const currentNewItemText = newItemTexts[checklist.id] || ''; // Get text for this specific list
+        const completionPercentage = getCompletionPercentage(checklist.items);
+        const currentNewItemText = newItemTexts[checklist.id.toString()] || '';
 
-          return (
-            <ThemedView key={checklist.id} style={styles.checklistCard}>
-              {/* Checklist Header */}
-              <ThemedView style={[styles.checklistHeader, { backgroundColor: 'transparent' }]}>
-                <ThemedText style={styles.checklistTitle} numberOfLines={1} ellipsizeMode="tail">{checklist.title}</ThemedText>
-                <TouchableOpacity
-                  style={[styles.shareButton, checklist.isShared && styles.activeShareButton]}
-                  onPress={() => shareChecklist(checklist.id)}
-                >
-                  <Ionicons
-                    name={checklist.isShared ? "checkmark-done-circle" : "share-outline"} // Changed icon for shared
-                    size={20}
-                    color={checklist.isShared ? "#fff" : tintColor}
-                  />
-                  <ThemedText style={[styles.shareButtonText, checklist.isShared && { color: '#fff' }]}>
-                    {checklist.isShared ? "Shared" : "Share"}
-                  </ThemedText>
-                </TouchableOpacity>
-              </ThemedView>
-
-              {/* Progress Bar */}
-              {checklist.items.length > 0 && (
-                <ThemedView style={[styles.progressContainer, { backgroundColor: 'transparent' }]}>
-                  <ThemedView style={styles.progressBar}>
-                    <View
-                      style={[
-                        styles.progressFill,
-                        { width: `${completionPercentage}%`, backgroundColor: tintColor } // Use tint color for progress
-                      ]}
-                    />
-                  </ThemedView>
-                  <ThemedText style={styles.progressText}>
-                    {`${Math.round(completionPercentage)}% complete`}
-                  </ThemedText>
-                </ThemedView>
-              )}
-
-              {/* Item List */}
-              {checklist.items.length > 0 && (
-                <ThemedView style={[styles.itemsContainer, { backgroundColor: 'transparent' }]}>
-                  {checklist.items.map((item, index) => (
-                    <TouchableOpacity
-                      key={item.id}
-                      style={[
-                        styles.checklistItem,
-                        index === checklist.items.length - 1 && { borderBottomWidth: 0 } // No border on last item
-                      ]}
-                      onPress={() => toggleItemCompletion(checklist.id, item.id)}
-                      activeOpacity={0.7}
-                    >
-                      <View style={[
-                        styles.checkboxContainer,
-                        { borderColor: item.isCompleted ? tintColor : 'rgba(150, 150, 150, 0.7)'}, // Use tint color for completed border
-                        item.isCompleted && styles.checkboxCompleted, // Apply completed background
-                        item.isCompleted && { backgroundColor: tintColor } // Use tint color for background
-                      ]}>
-                        {item.isCompleted && (
-                          <Ionicons name="checkmark" size={16} color="#fff" /> // White checkmark
-                        )}
-                      </View>
-                      <ThemedText
-                        style={[
-                          styles.checklistItemText,
-                          item.isCompleted && styles.completedItemText
-                        ]}
-                        numberOfLines={1}
-                        ellipsizeMode='tail'
-                      >
-                        {item.text}
-                      </ThemedText>
-                    </TouchableOpacity>
-                  ))}
-                </ThemedView>
-              )}
-               {/* Message for empty list */}
-               {checklist.items.length === 0 && (
-                    <ThemedText style={styles.emptyListText}>This list is empty. Add some items!</ThemedText>
-               )}
-
-              {/* Add New Item */}
-              <ThemedView style={[styles.newItemContainer, { backgroundColor: 'transparent' }]}>
-                <TextInput
-                  style={[styles.newItemInput, { color: textColor }]} // Use theme text color
-                  placeholder="Add new item..."
-                  placeholderTextColor="rgba(150, 150, 150, 0.8)"
-                  value={currentNewItemText}
-                  onChangeText={(text) => setNewItemTexts(prev => ({ ...prev, [checklist.id]: text }))}
-                  onSubmitEditing={() => addNewItem(checklist.id)} // Add item on return/done
-                  returnKeyType="done"
-                  blurOnSubmit={false} // Keep keyboard open sometimes useful, but can be true
+        return (
+          <ThemedView key={checklist.id} style={styles.checklistCard}>
+            {/* Checklist Header */}
+            <ThemedView style={[styles.checklistHeader, { backgroundColor: 'transparent' }]}>
+              <ThemedText style={styles.checklistTitle} numberOfLines={1} ellipsizeMode="tail">{checklist.name}</ThemedText>
+              <TouchableOpacity
+                style={styles.shareButton}
+                onPress={() => shareChecklist(checklist.id)}
+              >
+                <Ionicons
+                  name="share-outline"
+                  size={20}
+                  color={tintColor}
                 />
-                <TouchableOpacity
-                  style={styles.addItemButton}
-                  onPress={() => addNewItem(checklist.id)}
-                  disabled={currentNewItemText.trim() === ''} // Disable if input is empty
-                >
-                  <Ionicons
-                    name="add-circle"
-                    size={28} // Slightly larger icon
-                    color={currentNewItemText.trim() ? tintColor : 'rgba(150, 150, 150, 0.5)'}
-                  />
-                </TouchableOpacity>
-              </ThemedView>
+                <ThemedText style={styles.shareButtonText}>
+                  Share
+                </ThemedText>
+              </TouchableOpacity>
             </ThemedView>
-          );
-        })}
+
+            {/* Progress Bar */}
+            {checklist.items.length > 0 && (
+              <ThemedView style={[styles.progressContainer, { backgroundColor: 'transparent' }]}>
+                <ThemedView style={styles.progressBar}>
+                  <View
+                    style={[
+                      styles.progressFill,
+                      { width: `${Math.round(completionPercentage)}%`, backgroundColor: tintColor }
+                    ]}
+                  />
+                </ThemedView>
+                <ThemedText style={styles.progressText}>
+                  {Math.round(completionPercentage)}% complete
+                </ThemedText>
+              </ThemedView>
+            )}
+
+            {/* Item List */}
+            {checklist.items.length > 0 && (
+              <ThemedView style={[styles.itemsContainer, { backgroundColor: 'transparent' }]}>
+                {checklist.items.map((item, index) => (                <TouchableOpacity
+                  key={item.id}
+                  style={[
+                    styles.checklistItem,
+                    index === checklist.items.length - 1 ? { borderBottomWidth: 0 } : null
+                  ]}
+                  onPress={() => toggleItemCompletion(checklist.id, item.id)}
+                  activeOpacity={0.7}
+                >
+                  <View style={[
+                    styles.checkboxContainer,
+                    { borderColor: item.checked ? tintColor : 'rgba(150, 150, 150, 0.7)' },
+                    item.checked ? styles.checkboxCompleted : null,
+                    item.checked ? { backgroundColor: tintColor } : null
+                  ]}>
+                      {item.checked && (
+                        <Ionicons name="checkmark" size={16} color="#fff" />
+                      )}
+                    </View>
+                    <ThemedText style={[
+                      styles.checklistItemText,
+                      item.checked ? styles.completedItemText : null
+                    ]}
+                      numberOfLines={1}
+                      ellipsizeMode='tail'
+                    >
+                      {item.text}
+                    </ThemedText>
+                  </TouchableOpacity>
+                ))}
+              </ThemedView>
+            )}
+            {/* Message for empty list */}
+            {checklist.items.length === 0 && (
+              <ThemedText style={styles.emptyListText}>This list is empty. Add some items!</ThemedText>
+            )}
+
+            {/* Add New Item */}
+            <ThemedView style={[styles.newItemContainer, { backgroundColor: 'transparent' }]}>
+              <TextInput
+                style={styles.newItemInput}
+                placeholder="Add new item..."
+                placeholderTextColor="rgba(150, 150, 150, 0.8)"
+                value={currentNewItemText}
+                onChangeText={(text) => setNewItemTexts(prev => ({ ...prev, [checklist.id.toString()]: text }))}
+                onSubmitEditing={() => addNewItem(checklist.id)}
+                returnKeyType="done"
+                blurOnSubmit={false}
+              />
+              <TouchableOpacity
+                style={styles.addItemButton}
+                onPress={() => addNewItem(checklist.id)}
+                disabled={currentNewItemText.trim() === ''}
+              >
+                <Ionicons
+                  name="add-circle"
+                  size={28}
+                  color={currentNewItemText.trim() ? tintColor : 'rgba(150, 150, 150, 0.5)'}
+                />
+              </TouchableOpacity>
+            </ThemedView>
+          </ThemedView>
+        )
+      })}
       </ScrollView>
     </ThemedView>
-  );
-}  // --- Styles ---
+  )
+}
+
+// --- Styles ---
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -464,6 +432,17 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
     marginBottom: 8,
   },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingTop: 50,
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    opacity: 0.7,
+  },
   addNewSection: {
     paddingHorizontal: 20,
     paddingBottom: 20,
@@ -473,7 +452,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     borderRadius: 20,
     overflow: 'hidden',
-    // Enhanced shadows for depth
     elevation: 4,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -482,23 +460,22 @@ const styles = StyleSheet.create({
   },
   textInput: {
     flex: 1,
-    paddingVertical: 14, // Adjusted padding
+    paddingVertical: 14,
     paddingHorizontal: 16,
     fontSize: 16,
     fontWeight: '500',
-    // Color set inline based on context
   },
   addButton: {
-    width: 60, // Slightly wider
+    width: 60,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.2)', // Subtle background
-  },  scanButton: {
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  scanButton: {
     marginHorizontal: 20,
     marginBottom: 24,
     borderRadius: 20,
     overflow: 'hidden',
-    // Enhanced shadows for depth
     elevation: 4,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -515,7 +492,7 @@ const styles = StyleSheet.create({
     marginRight: 10,
   },
   scanButtonText: {
-    color: '#FFF', // Explicit white color
+    color: '#FFF',
     fontSize: 16,
     fontWeight: '600',
   },
@@ -524,73 +501,62 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: 20,
-    paddingTop: 4, // Small padding at the top of scroll
-    paddingBottom: 40, // More padding at the bottom
-  },  checklistCard: {
+    paddingTop: 4,
+    paddingBottom: 40,
+  },
+  checklistCard: {
     borderRadius: 20,
     marginBottom: 20,
     padding: 20,
-    // backgroundColor handled by ThemedView
     elevation: 2,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 5,
-    borderWidth: 1, 
-    overflow: 'hidden', // Clip content within border radius
+    borderWidth: 1,
+    overflow: 'hidden',
   },
   checklistHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 14, // Adjusted margin
-    backgroundColor: 'transparent', // Ensure no extra background
+    marginBottom: 14,
+    backgroundColor: 'transparent',
   },
   checklistTitle: {
-    fontSize: 20, // Slightly smaller title
-    fontWeight: 'bold', // Bolder title
-    flex: 1, // Allow title to take available space
+    fontSize: 20,
+    fontWeight: 'bold',
+    flex: 1,
     marginRight: 12,
-    // Color from ThemedText
-  },  shareButton: {
+  },
+  shareButton: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 8,
     paddingHorizontal: 14,
     borderRadius: 20,
-    backgroundColor: 'rgba(0, 122, 255, 0.15)', // Default share button bg
-    // Add subtle shadow for depth
+    backgroundColor: 'rgba(0, 122, 255, 0.15)',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
     shadowRadius: 2,
     elevation: 1,
   },
-  activeShareButton: {
-    backgroundColor: '#007BFF', // Active share button bg (example blue)
-    // Add stronger shadow for active state
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 3,
-    elevation: 2,
-  },
   shareButtonText: {
-    fontSize: 13, // Slightly smaller text
+    fontSize: 13,
     fontWeight: '600',
-    marginLeft: 6, // Increased spacing
-    // Color set inline based on state
+    marginLeft: 6,
   },
   progressContainer: {
     marginBottom: 16,
     backgroundColor: 'transparent',
-  },  progressBar: {
-    height: 8, // Slightly taller for better visibility
-    backgroundColor: 'rgba(200, 200, 200, 0.2)', // Background of the bar track
+  },
+  progressBar: {
+    height: 8,
+    backgroundColor: 'rgba(200, 200, 200, 0.2)',
     borderRadius: 4,
     overflow: 'hidden',
-    marginBottom: 8, // Adjusted margin
-    // Add subtle shadow for depth
+    marginBottom: 8,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
@@ -599,44 +565,41 @@ const styles = StyleSheet.create({
   },
   progressFill: {
     height: '100%',
-    // backgroundColor set inline (using tintColor)
     borderRadius: 4,
   },
   progressText: {
-    fontSize: 12, // Smaller progress text
+    fontSize: 12,
     fontWeight: '500',
     opacity: 0.7,
-    textAlign: 'right', // Align progress text to the right
-    // Color from ThemedText
+    textAlign: 'right',
   },
   itemsContainer: {
-    // Container for the list items
     backgroundColor: 'transparent',
-  },  checklistItem: {
+  },
+  checklistItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 14, // More vertical space for better touch targets
-    paddingHorizontal: 2, // Slight horizontal padding
+    paddingVertical: 14,
+    paddingHorizontal: 2,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(200, 200, 200, 0.1)', // Lighter separator
-    borderRadius: 4, // Slight border radius for a modern touch
+    borderBottomColor: 'rgba(200, 200, 200, 0.1)',
+    borderRadius: 4,
   },
   emptyListText: {
-      paddingVertical: 20,
-      textAlign: 'center',
-      fontSize: 15,
-      opacity: 0.6,
-      fontStyle: 'italic',
-  },  checkboxContainer: {
-    width: 24, // Slightly larger checkbox for better visibility
+    paddingVertical: 20,
+    textAlign: 'center',
+    fontSize: 15,
+    opacity: 0.6,
+    fontStyle: 'italic',
+  },
+  checkboxContainer: {
+    width: 24,
     height: 24,
     borderRadius: 12,
     borderWidth: 2,
-    // borderColor set inline based on state and theme
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 16, // Increased spacing
-    // Add subtle shadow for depth
+    marginRight: 16,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
@@ -644,38 +607,36 @@ const styles = StyleSheet.create({
     elevation: 1,
   },
   checkboxCompleted: {
-    // backgroundColor set inline using tintColor
-    // borderColor set inline using tintColor
+    // backgroundColor and borderColor set inline using tintColor
   },
   checklistItemText: {
     fontSize: 16,
-    fontWeight: '400', // Regular weight for items
+    fontWeight: '400',
     flex: 1,
-    // Color from ThemedText
   },
   completedItemText: {
     textDecorationLine: 'line-through',
-    opacity: 0.5, // More faded when completed
-  },  newItemContainer: {
+    opacity: 0.5,
+  },
+  newItemContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 16, // More space between items and new item input
+    marginTop: 16,
     paddingTop: 14,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(200, 200, 200, 0.1)', // Lighter separator
+    borderTopColor: 'rgba(200, 200, 200, 0.1)',
     backgroundColor: 'transparent',
   },
   newItemInput: {
     flex: 1,
-    paddingVertical: 12, // More vertical padding for better touch experience
-    paddingHorizontal: 8, // Slightly more horizontal padding
+    paddingVertical: 12,
+    paddingHorizontal: 8,
     fontSize: 16,
-    fontWeight: '500', // Medium weight for input text
-    // Color from ThemedText via inline style
+    fontWeight: '500',
   },
   addItemButton: {
-    paddingLeft: 10, // Space before button
-    paddingRight: 4, // Align icon nicely
-    paddingVertical: 5, // Make tap area slightly larger vertically
+    paddingLeft: 10,
+    paddingRight: 4,
+    paddingVertical: 5,
   },
 });
