@@ -1,33 +1,20 @@
 import React, { useState } from 'react';
-import { StyleSheet, ScrollView, TouchableOpacity, Switch, TextInput, Alert,View } from 'react-native';
+import { StyleSheet, ScrollView, TouchableOpacity, Switch, Alert, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { useThemeColor } from '@/hooks/useThemeColor';
 import { useRouter } from 'expo-router';
-import { authService } from '@/services/api';
-import { useAuth } from '@/app/_layout';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function ProfileScreen() {
   const colorScheme = useColorScheme();
   const tintColor = useThemeColor({}, 'tint');
   const router = useRouter();
-  const { signOut } = useAuth();
+  const { user, logout } = useAuth();
   
-  const [user, setUser] = useState({
-    name: 'John Doe',
-    email: 'john.doe@example.com',
-    phone: '+1 (234) 567-8910',
-    isPhoneVerified: false,
-    points: 450,
-    language: 'English',
-  });
-
-  const [isEditing, setIsEditing] = useState(false);
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
-  const [phoneVerificationCode, setPhoneVerificationCode] = useState('');
-  const [isVerifyingPhone, setIsVerifyingPhone] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   const handleLogout = async () => {
@@ -35,11 +22,8 @@ export default function ProfileScreen() {
       setIsLoggingOut(true);
       console.log("Attempting to log out...");
       
-      // Call the API service to clear session data
-      await authService.logout();
-      
-      // Use the auth context to sign out, which will trigger the redirect
-      await signOut();
+      // Use the auth context logout method
+      await logout();
       
       console.log("Logout successful");
     } catch (error) {
@@ -47,155 +31,66 @@ export default function ProfileScreen() {
       Alert.alert("Logout Failed", "There was a problem logging out. Please try again.");
     } finally {
       setIsLoggingOut(false);
-    }
-  };
+    }  };
+  if (!user) {
+    return (
+      <ThemedView style={styles.container}>
+        <ThemedText style={styles.title}>Profile</ThemedText>
+        <ThemedText>Loading user data...</ThemedText>
+      </ThemedView>
+    );
+  }
 
-  const toggleEdit = () => {
-    setIsEditing(!isEditing);
-  };
-
-  const handleVerifyPhone = () => {
-    setIsVerifyingPhone(true);
-  };
-
-  const submitPhoneVerification = () => {
-    // In a real app, this would send the verification code to the server
-    if (phoneVerificationCode === '1234') { // Mock verification code check
-      setUser(prev => ({
-        ...prev,
-        isPhoneVerified: true
-      }));
-    }
-    setIsVerifyingPhone(false);
-    setPhoneVerificationCode('');
-  };
-
-  const changeLanguage = (lang: string) => {
-    setUser(prev => ({
-      ...prev,
-      language: lang
-    }));
-    // In a real app, this would trigger language change throughout the app
-  };
-
-  const languages = ['English', 'Arabic'];
   return (
     <ThemedView style={styles.container}>
       <ThemedText type="title" style={styles.title}>Profile</ThemedText>
-      
-      {/* Profile Header */}
+        {/* Profile Header */}
       <View style={styles.profileHeader}>
-        <View style={styles.avatarContainer}>
-          <ThemedView style={styles.avatar} radius="full">
+        <View style={styles.avatarContainer}>          <ThemedView style={styles.avatar}>
             <ThemedText style={styles.avatarText}>
-              {user.name.split(' ').map(name => name[0]).join('')}
+              {user.fullName ? user.fullName.split(' ').map(name => name[0]).join('').toUpperCase() : 'N/A'}
             </ThemedText>
           </ThemedView>
-          {user.isPhoneVerified && (
-            <View style={styles.verifiedBadge}>
-              <Ionicons name="checkmark" size={12} color="#FFF" />
-            </View>
-          )}
         </View>
-        
-        <View style={styles.profileInfo}>
-          <ThemedText style={styles.profileName}>{user.name}</ThemedText>
-          <ThemedText style={styles.profileEmail}>{user.email}</ThemedText>
-          {!isEditing ? (
-            <TouchableOpacity style={styles.editButton} onPress={toggleEdit}>
-              <ThemedText style={styles.editButtonText}>Edit Profile</ThemedText>
-            </TouchableOpacity>
-          ) : (
-            <TouchableOpacity style={styles.editButton} onPress={toggleEdit}>
-              <ThemedText style={styles.editButtonText}>Save Changes</ThemedText>
-            </TouchableOpacity>
-          )}
+          <View style={styles.profileInfo}>
+          <ThemedText style={styles.profileName}>{user.fullName || 'N/A'}</ThemedText>
+          <ThemedText style={styles.profileEmail}>{user.email || 'N/A'}</ThemedText>
+          <ThemedText style={styles.profileUsername}>@{user.username || 'N/A'}</ThemedText>
         </View>
-      </View>
-      
-      <ScrollView style={styles.profileContent} showsVerticalScrollIndicator={false}>
-        {/* Points Section */}
-        <ThemedView style={styles.section} variant="card" radius="large" useShadow intensity="low">
-          <ThemedText style={styles.sectionTitle}>Your Points</ThemedText>
-          <View style={styles.pointsContainer}>
-            <ThemedText style={styles.pointsValue}>{user.points}</ThemedText>
-            <ThemedText style={styles.pointsLabel}>points collected</ThemedText>
+        </View>
+
+        <ScrollView style={styles.profileContent} showsVerticalScrollIndicator={false}>
+        {/* User Information Section */}
+        <ThemedView style={styles.section}>
+          <ThemedText style={styles.sectionTitle}>Profile Information</ThemedText>
+            <View style={styles.infoRow}>
+            <ThemedText style={styles.infoLabel}>Full Name:</ThemedText>
+            <ThemedText style={styles.infoValue}>{user.fullName || 'N/A'}</ThemedText>
           </View>
-          <TouchableOpacity style={styles.viewDetailsButton}>
-            <ThemedText style={styles.viewDetailsText}>View Rewards</ThemedText>
-            <Ionicons name="chevron-forward" size={18} color={tintColor} />
-          </TouchableOpacity>
-        </ThemedView>
-        
-        {/* Phone Verification */}
-        <ThemedView style={styles.section} variant="card" radius="large" useShadow intensity="low">
-          <ThemedText style={styles.sectionTitle}>Phone Verification</ThemedText>
-          <View style={styles.phoneSection}>
-            <ThemedText style={styles.phoneNumber}>{user.phone}</ThemedText>
-            {!user.isPhoneVerified ? (
-              isVerifyingPhone ? (
-                <View style={styles.verificationInputContainer}>
-                  <TextInput
-                    style={styles.verificationInput}
-                    placeholder="Enter 4-digit code"
-                    placeholderTextColor="#999"
-                    value={phoneVerificationCode}
-                    onChangeText={setPhoneVerificationCode}
-                    keyboardType="number-pad"
-                    maxLength={4}
-                  />
-                  <TouchableOpacity 
-                    style={styles.verifyButton}
-                    onPress={submitPhoneVerification}
-                  >
-                    <ThemedText style={styles.verifyButtonText}>Verify</ThemedText>
-                  </TouchableOpacity>
-                </View>
-              ) : (
-                <TouchableOpacity 
-                  style={styles.verifyPhoneButton}
-                  onPress={handleVerifyPhone}
-                >
-                  <ThemedText style={styles.verifyPhoneText}>Verify Now</ThemedText>
-                </TouchableOpacity>
-              )
-            ) : (
-              <View style={styles.verifiedContainer}>
-                <Ionicons name="checkmark-circle" size={20} color="#4CAF50" />
-                <ThemedText style={styles.verifiedText}>Verified</ThemedText>
-              </View>
-            )}
+          
+          <View style={styles.infoRow}>
+            <ThemedText style={styles.infoLabel}>Username:</ThemedText>
+            <ThemedText style={styles.infoValue}>@{user.username || 'N/A'}</ThemedText>
           </View>
-        </ThemedView>
-        
-        {/* Language Selection */}
-        <ThemedView style={styles.section} variant="card" radius="large" useShadow intensity="low">
-          <ThemedText style={styles.sectionTitle}>Language</ThemedText>
-          <View style={styles.languageContainer}>
-            {languages.map((lang) => (
-              <TouchableOpacity 
-                key={lang}
-                style={[
-                  styles.languageOption,
-                  user.language === lang && styles.selectedLanguage
-                ]}
-                onPress={() => changeLanguage(lang)}
-              >
-                <ThemedText 
-                  style={[
-                    styles.languageText,
-                    user.language === lang && styles.selectedLanguageText
-                  ]}
-                >
-                  {lang}
-                </ThemedText>
-              </TouchableOpacity>
-            ))}
+          
+          <View style={styles.infoRow}>
+            <ThemedText style={styles.infoLabel}>Email:</ThemedText>
+            <ThemedText style={styles.infoValue}>{user.email || 'N/A'}</ThemedText>
+          </View>
+          
+          <View style={styles.infoRow}>
+            <ThemedText style={styles.infoLabel}>Phone:</ThemedText>
+            <ThemedText style={styles.infoValue}>{user.phoneNumber || 'N/A'}</ThemedText>
+          </View>
+          
+          <View style={styles.infoRow}>
+            <ThemedText style={styles.infoLabel}>Address:</ThemedText>
+            <ThemedText style={styles.infoValue}>{user.address || 'Not provided'}</ThemedText>
           </View>
         </ThemedView>
         
         {/* Notification Settings */}
-        <ThemedView style={styles.section} variant="card" radius="large" useShadow intensity="low">
+        <ThemedView style={styles.section}>
           <ThemedText style={styles.sectionTitle}>Notifications</ThemedText>
           <View style={styles.settingItem}>
             <ThemedText style={styles.settingLabel}>Push Notifications</ThemedText>
@@ -207,9 +102,9 @@ export default function ProfileScreen() {
               value={notificationsEnabled}
             />
           </View>
-        </ThemedView>        
-        {/* Log Out Button */}
-        <TouchableOpacity 
+        </ThemedView>
+        
+        {/* Log Out Button */}        <TouchableOpacity 
           style={[styles.logoutButton, isLoggingOut && styles.disabledButton]} 
           onPress={handleLogout}
           disabled={isLoggingOut}
@@ -217,10 +112,7 @@ export default function ProfileScreen() {
           {isLoggingOut ? (
             <ThemedText style={styles.logoutText}>Logging out...</ThemedText>
           ) : (
-            <>
-              <Ionicons name="log-out-outline" size={20} color="#FFF" style={styles.logoutIcon} />
-              <ThemedText style={styles.logoutText}>Log Out</ThemedText>
-            </>
+            <ThemedText style={styles.logoutText}>Log Out</ThemedText>
           )}
         </TouchableOpacity>
       </ScrollView>
@@ -283,13 +175,16 @@ const styles = StyleSheet.create({
   },
   profileName: {
     fontSize: 24,
-    fontWeight: '600',
-    marginBottom: 6,
+    fontWeight: '600',    marginBottom: 6,
   },
   profileEmail: {
     fontSize: 15,
     opacity: 0.7,
-    marginBottom: 14,
+    marginBottom: 4,
+  },
+  profileUsername: {
+    fontSize: 14,
+    opacity: 0.6,
   },
   editButton: {
     paddingVertical: 8,
@@ -305,12 +200,29 @@ const styles = StyleSheet.create({
   },
   editButtonText: {
     color: '#007BFF',
-    fontSize: 14,
-    fontWeight: '600',
+    fontSize: 14,    fontWeight: '600',
   },
   profileContent: {
     flex: 1,
-  },  section: {
+  },
+  infoRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  infoLabel: {
+    fontSize: 16,
+    opacity: 0.7,
+  },
+  infoValue: {
+    fontSize: 16,
+    fontWeight: '500',
+    flex: 1,    textAlign: 'right',
+  },
+  section: {
     borderRadius: 20,
     padding: 18,
     marginBottom: 20,
@@ -346,9 +258,9 @@ const styles = StyleSheet.create({
   },
   viewDetailsText: {
     fontSize: 15,
-    fontWeight: '500',
-    marginRight: 6,
-  },  phoneSection: {
+    fontWeight: '500',    marginRight: 6,
+  },
+  phoneSection: {
     alignItems: 'center',
   },
   phoneNumber: {
@@ -414,9 +326,9 @@ const styles = StyleSheet.create({
   verifiedText: {
     marginLeft: 8,
     fontSize: 16,
-    color: '#4CAF50',
-    fontWeight: '600',
-  },  languageContainer: {
+    color: '#4CAF50',    fontWeight: '600',
+  },
+  languageContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     marginHorizontal: -6,

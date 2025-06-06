@@ -10,7 +10,7 @@ import ParallaxScrollView from '@/components/ParallaxScrollView';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { useThemeColor } from '@/hooks/useThemeColor';
-import { cartSessionService } from '@/services/api';
+import { cartSessionService } from '@/services';
 
 const { width } = Dimensions.get('window');
 // Calculate card width to ensure true two-column layout with proper spacing
@@ -71,15 +71,20 @@ export default function HomeScreen() {
   const handleScanQR = () => {
     router.push("/qr-scanner");
   };
-
   const handleEndSession = async () => {
     try {
+      console.log('Starting end session process...');
       // Call the API service to end the session
       await cartSessionService.endSession();
-      // Update local state to reflect the ended session
+      console.log('Session ended successfully on server, updating local state');
+      // Update local state to reflect the ended session only if API call succeeds
       setActiveCartSession(null);
+      console.log('Local session state cleared');
     } catch (error) {
       console.error('Error ending session:', error);
+      // Don't clear the local state if the API call failed
+      // The user should still see their active session
+      alert('Failed to end session. Please try again.');
     }
   };
 

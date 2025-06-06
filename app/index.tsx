@@ -1,28 +1,11 @@
-import { Redirect, useLocalSearchParams } from 'expo-router';
-import { useEffect, useState } from 'react';
-import * as SecureStore from 'expo-secure-store';
-import { ActivityIndicator, View } from 'react-native';
+import { Redirect } from 'expo-router';
+import { useAuth } from '@/contexts/AuthContext';
+import { ActivityIndicator } from 'react-native';
 import { ThemedView } from '@/components/ThemedView';
 
 export default function RootIndex() {
-  const [isLoading, setIsLoading] = useState(true);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const { isLoggedIn, isLoading } = useAuth();
   
-  useEffect(() => {
-    async function checkAuth() {
-      try {
-        const token = await SecureStore.getItemAsync('userToken');
-        setIsAuthenticated(!!token);
-      } catch (e) {
-        console.error('Error checking authentication:', e);
-      } finally {
-        setIsLoading(false);
-      }
-    }
-    
-    checkAuth();
-  }, []);
-
   // Show loading indicator while checking auth status
   if (isLoading) {
     return (
@@ -33,7 +16,7 @@ export default function RootIndex() {
   }
 
   // Redirect based on authentication status
-  if (isAuthenticated) {
+  if (isLoggedIn) {
     return <Redirect href="/(tabs)" />;
   } else {
     return <Redirect href="/sign-in" />;

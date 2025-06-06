@@ -1,4 +1,4 @@
-import * as SecureStore from 'expo-secure-store';
+import { storage } from '@/services/secureStore';
 
 // List of all SecureStore keys used in the app
 const SECURE_STORE_KEYS = ['userToken'];
@@ -9,7 +9,7 @@ const SECURE_STORE_KEYS = ['userToken'];
  */
 export const deleteSecureItem = async (key: string): Promise<void> => {
   try {
-    await SecureStore.deleteItemAsync(key);
+    await storage.deleteItem(key);
     console.log(`Deleted item with key: ${key}`);
   } catch (error) {
     console.error(`Error deleting item with key ${key}:`, error);
@@ -22,7 +22,7 @@ export const deleteSecureItem = async (key: string): Promise<void> => {
  */
 export const clearSecureStore = async (): Promise<void> => {
   try {
-    await Promise.all(SECURE_STORE_KEYS.map(key => SecureStore.deleteItemAsync(key)));
+    await Promise.all(SECURE_STORE_KEYS.map(key => storage.deleteItem(key)));
     console.log('All items cleared from SecureStore');
   } catch (error) {
     console.error('Error clearing SecureStore:', error);
@@ -39,7 +39,7 @@ export const getAllSecureItems = async (): Promise<Record<string, string | null>
     const items: Record<string, string | null> = {};
     await Promise.all(
       SECURE_STORE_KEYS.map(async (key) => {
-        items[key] = await SecureStore.getItemAsync(key);
+        items[key] = await storage.getItem(key);
       })
     );
     return items;

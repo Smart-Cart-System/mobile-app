@@ -1,134 +1,65 @@
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { useFonts } from 'expo-font';
-import { Stack, Redirect, useRouter, useSegments } from 'expo-router';
+import { Stack, useRouter, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect, useState, createContext, useContext, useCallback } from 'react';
-import * as SecureStore from 'expo-secure-store';
+import { useEffect } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { useColorScheme } from '@/hooks/useColorScheme';
+import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
 
-// Create an authentication context to be used throughout the app
-interface AuthContextType {
-  signIn: (token: string) => Promise<void>;
-  signOut: () => Promise<void>;
-  authState: {
-    userToken: string | null;
-    isLoading: boolean;
-  };
-}
+// Navigation component that handles routing based on auth state
+const AppNavigation = () => {
+  const { isLoggedIn, isLoading } = useAuth();
+  const router = useRouter();
+  const segments = useSegments();  const colorScheme = useColorScheme();
+  useEffect(() => {
+    if (isLoading) return; // Don't do anything while loading
 
-const AuthContext = createContext<AuthContextType | null>(null);
-
-// Custom hook to use the authentication context
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error("useAuth must be used within an AuthProvider");
+    const isAuthScreen = segments[0] === 'sign-in' || segments[0] === 'sign-up';
+    
+    if (!isLoggedIn && !isAuthScreen) {
+      // Redirect to sign-in if not authenticated
+      router.replace('/sign-in');
+    } else if (isLoggedIn && isAuthScreen) {
+      // Redirect to main app if authenticated
+      router.replace('/(tabs)');
+    }
+  }, [isLoggedIn, isLoading, segments, router]);  if (isLoading) {
+    return null; // Or a loading screen
   }
-  return context;
+
+  return (
+    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="qr-scanner" options={{ presentation: 'modal', headerShown: false }} />
+        <Stack.Screen name="ocr-scanner" options={{ presentation: 'modal', headerShown: false }} />
+        <Stack.Screen name="sign-in" options={{ headerShown: false }} />
+        <Stack.Screen name="sign-up" options={{ headerShown: false }} />
+        <Stack.Screen name="+not-found" />
+      </Stack>
+      <StatusBar style="auto" />
+    </ThemeProvider>
+  );
 };
 
-// Root layout with authentication provider
 export default function RootLayout() {
-  const colorScheme = useColorScheme();
-  const [state, setState] = useState({
-    userToken: null as string | null,
-    isLoading: true,
-  });
-  
-  const router = useRouter();
-  const segments = useSegments();
-  
   const [loaded] = useFonts({
     SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
   });
 
-  // Sign in method to set user token in secure storage
-  const signIn = useCallback(async (token: string) => {
-    setState(prevState => ({ ...prevState, isLoading: true }));
-    
-    try {
-      console.log("Storing new auth token");
-      await SecureStore.setItemAsync('userToken', token);
-      setState({ userToken: token, isLoading: false });
-    } catch (e) {
-      console.error('Error storing authentication token:', e);
-      setState(prevState => ({ ...prevState, isLoading: false }));
-    }
-  }, []);
-
-  // Sign out method to remove user token from secure storage
-  const signOut = useCallback(async () => {
-    setState(prevState => ({ ...prevState, isLoading: true }));
-    
-    try {
-      console.log("Removing auth token");
-      await SecureStore.deleteItemAsync('userToken');
-      setState({ userToken: null, isLoading: false });
-    } catch (e) {
-      console.error('Error removing authentication token:', e);
-      setState(prevState => ({ ...prevState, isLoading: false }));
-    }
-  }, []);
-
-  // Check login state when app loads
   useEffect(() => {
-    const checkLoginState = async () => {
-      try {
-        const token = await SecureStore.getItemAsync('userToken');
-        console.log('User token on load:', token);
-        setState({ userToken: token, isLoading: false });
-      } catch (e) {
-        console.log('Error getting authentication token:', e);
-        setState(prevState => ({ ...prevState, isLoading: false }));
-      }
-    };
-
     if (loaded) {
-      checkLoginState().then(() => {
-        console.log('Splash screen hidden');
-        SplashScreen.hideAsync();
-      });
+      SplashScreen.hideAsync();
     }
   }, [loaded]);
 
-  // Handle navigation based on auth state
-  useEffect(() => {
-    // Wait for navigation to be ready
-    if (state.isLoading || !segments) return;
-
-    const inAuthGroup = segments[0] === '(tabs)';
-    const isScanner = segments[0] === 'qr-scanner' || segments[0] === 'ocr-scanner';
-    
-    if (state.userToken) {
-      // If user is authenticated
-      if (!inAuthGroup && !isScanner) {
-        // Only redirect non-tabs, non-scanner routes when authenticated
-        console.log("Redirecting to tabs because user is authenticated");
-        router.replace("/(tabs)");
-      }
-    } else if (!state.userToken && (inAuthGroup || isScanner)) {
-      // Redirect to sign in if user is not signed in but trying to access protected routes
-      console.log("Redirecting to sign-in because user is not authenticated");
-      router.replace("/sign-in");
-    }
-  }, [state.userToken, state.isLoading, segments, router]);
-
-  const authContext: AuthContextType = {
-    signIn,
-    signOut,
-    authState: {
-      userToken: state.userToken,
-      isLoading: state.isLoading
-    }
-  };
-
-  if (!loaded || state.isLoading) {
+  if (!loaded) {
     return null;
   }
 
@@ -137,24 +68,9 @@ export default function RootLayout() {
       frame: { x: 0, y: 0, width: 0, height: 0 },
       insets: { top: 0, left: 0, right: 0, bottom: 0 }
     }}>
-      <AuthContext.Provider value={authContext}>
-        <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-          <Stack screenOptions={{ headerShown: false }}>
-            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-            <Stack.Screen name="qr-scanner" options={{ presentation: 'modal', headerShown: false }} />
-            <Stack.Screen name="ocr-scanner" options={{ presentation: 'modal', headerShown: false }} />
-            <Stack.Screen name="sign-in" options={{ headerShown: false }} />
-            <Stack.Screen name="sign-up" options={{ headerShown: false }} />
-
-            {/* Use redirect props on initial route based on authentication status */}
-            <Stack.Screen
-              name="index"
-              redirect={state.userToken ? true : false}
-            />
-          </Stack>
-          <StatusBar style="auto" />
-        </ThemeProvider>
-      </AuthContext.Provider>
+      <AuthProvider>
+        <AppNavigation />
+      </AuthProvider>
     </SafeAreaProvider>
   );
 }

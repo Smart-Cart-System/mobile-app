@@ -6,7 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import * as SecureStore from 'expo-secure-store';
-import { cartSessionService } from '@/services/api';
+import { cartSessionService } from '@/services';
 
 const { width } = Dimensions.get('window');
 
